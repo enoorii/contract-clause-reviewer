@@ -1,0 +1,23 @@
+[project]
+name = "contract-clause-reviewer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiofiles>=25.1.0",
+    "alembic>=1.18.5",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.139.0",
+    "granian[reload,uvloop]>=2.7.9",
+    "openai>=2.50.0",
+    "pydantic-settings>=2.14.2",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.16.0",
+    "py-pglite[sqlalchemy]>=0.5.3",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
