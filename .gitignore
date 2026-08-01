@@ -5,6 +5,26 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache
+
 
 # Virtual environments
 .venv
+.env
+
+# IDEs
+.vscode
+.zed
+
+# Databases
+**.db
+*.db
+*.sqlite
+*.sqlite3
+*file::memory*
+todo.db-wal
+todo.db-shm
+
+# Node
+node_modules/
+static/
