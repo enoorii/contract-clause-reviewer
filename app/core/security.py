@@ -2,7 +2,7 @@ import secrets
 from asyncio import to_thread
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import jwt
 from pwdlib import PasswordHash
@@ -33,20 +33,20 @@ async def create_access_token(user: Users) -> str:
     )
     jti = str(uuid4())
     token = jwt.encode(
-        {"sub": str(user.id), "type": TokenType.ACCESS, "exp": exp, "jti": jti},
+        {"sub": str(user.username), "type": TokenType.ACCESS, "exp": exp, "jti": jti},
         Settings.SECRET_KEY,
         algorithm="HS256",
     )
     return token
 
 
-async def create_refresh_token(user: Users) -> str:
+async def create_refresh_token() -> str:
     """Create an opaque refresh token (id + random string)."""
     return secrets.token_urlsafe(16)
 
 
 async def store_refresh_token(
-    session: DBSession, user: Users, raw_token: str
+    db: DBSession, user: Users, raw_token: str
 ) -> RefreshToken:
     """Hash and store a refresh token in the database. Returns the stored token object."""
     token_hash = await to_thread(password_hash.hash, raw_token)
@@ -60,13 +60,13 @@ async def store_refresh_token(
         is_revoked=False,
         last_used_at=datetime.now(timezone.utc),
     )
-    session.add(refresh_token)
+    db.add(refresh_token)
 
     return refresh_token
 
 
 # ---------- Verification ----------
-async def verify_access_token(token: str, session: DBSession) -> tuple[str, Users]:
+async def verify_access_token(token: str, db: DBSession):
     """Validate JWT access token and return the associated User."""
     try:
         payload = jwt.decode(token, Settings.SECRET_KEY, algorithms=["HS256"])
@@ -76,11 +76,11 @@ async def verify_access_token(token: str, session: DBSession) -> tuple[str, User
         if not jti:
             raise jwt.InvalidTokenError("Missing JTI")
 
-        user_id_str = payload.get("sub")
-        if not user_id_str:
+        username_str = payload.get("sub")
+        if not username_str:
             raise jwt.InvalidTokenError("Missing subject claim")
 
-        user_id = UUID(user_id_str)
+        username = str(username_str)
 
     except (jwt.DecodeError, ValueError) as e:
         raise jwt.InvalidTokenError(f"Invalid access token: {e}") from e
@@ -89,13 +89,7 @@ async def verify_access_token(token: str, session: DBSession) -> tuple[str, User
     except jwt.InvalidTokenError as e:
         raise jwt.InvalidTokenError(f"Invalid access token: {e}") from e
 
-    result = await session.exec(select(Users).where(Users.id == user_id))
-    try:
-        user = result.one()
-    except Exception as e:
-        raise ValueError("User not found") from e
-
-    return jti, user
+    return jti, username
 
 
 @dataclass
@@ -106,16 +100,14 @@ class VerifiedRefreshToken:
     token_record: RefreshToken
 
 
-async def verify_refresh_token(
-    raw_token: str, session: DBSession
-) -> VerifiedRefreshToken:
+async def verify_refresh_token(raw_token: str, db: DBSession) -> VerifiedRefreshToken:
     """
     Validate an opaque refresh token without modifying it.
     Returns both the user and the token record (needed for rotation).
     """
     token_hash = await to_thread(password_hash.hash, raw_token)
 
-    result = await session.exec(
+    result = await db.exec(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     )
     try:
@@ -132,24 +124,24 @@ async def verify_refresh_token(
 
 
 # ---------- Rotation ----------
-async def rotate_refresh_token(old_raw_token: str, session: DBSession) -> dict:
+async def rotate_refresh_token(old_raw_token: str, db: DBSession) -> dict:
     """
     Revoke the old refresh token, create a new one that inherits the SAME absolute expiry,
     and return new access + refresh tokens.
     """
     # Validate the old token and get its record
-    verified = await verify_refresh_token(old_raw_token, session)
+    verified = await verify_refresh_token(old_raw_token, db)
     old_token = verified.token_record
     user = verified.user
 
     # Revoke the old token
     old_token.is_revoked = True
     old_token.last_used_at = datetime.now(timezone.utc)
-    session.add(old_token)
+    db.add(old_token)
 
     # Create new tokens
     new_access = await create_access_token(user)
-    new_raw_refresh = await create_refresh_token(user)
+    new_raw_refresh = await create_refresh_token()
 
     # Hash the new token and store it with the SAME absolute expiry as the old one
     new_token_hash = await to_thread(password_hash.hash, new_raw_refresh)
@@ -161,7 +153,7 @@ async def rotate_refresh_token(old_raw_token: str, session: DBSession) -> dict:
         is_revoked=False,
         last_used_at=datetime.now(timezone.utc),
     )
-    session.add(new_refresh_token)
+    db.add(new_refresh_token)
 
     return {
         "access_token": new_access,
@@ -170,11 +162,11 @@ async def rotate_refresh_token(old_raw_token: str, session: DBSession) -> dict:
     }
 
 
-async def create_tokens_for_user(user: Users, session: DBSession) -> dict:
+async def create_tokens_for_user(user: Users, db: DBSession) -> dict:
     """Generate new access and refresh tokens for a user (login)."""
     access_token = await create_access_token(user)
-    raw_refresh = await create_refresh_token(user)
-    await store_refresh_token(session, user, raw_refresh)
+    raw_refresh = await create_refresh_token()
+    await store_refresh_token(db, user, raw_refresh)
     return {
         "access_token": access_token,
         "refresh_token": raw_refresh,
@@ -182,16 +174,16 @@ async def create_tokens_for_user(user: Users, session: DBSession) -> dict:
     }
 
 
-async def revoke_refresh_token(raw_token: str, session: DBSession):
+async def revoke_refresh_token(raw_token: str, db: DBSession):
     try:
         token_hash = await to_thread(password_hash.hash, raw_token)
-        result = await session.exec(
+        result = await db.exec(
             select(RefreshToken).where(RefreshToken.token_hash == token_hash)
         )
 
         stored_token = result.one()
 
         stored_token.is_revoked = True
-        session.add(stored_token)
+        db.add(stored_token)
     except Exception:
         return True
