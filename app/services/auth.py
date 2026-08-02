@@ -1,8 +1,7 @@
-import logging
-
 from pwdlib.exceptions import UnknownHashError
 
 from app.core.exceptions import AuthenticationError
+from app.infrastructure.logging import get_logger
 from app.core.security import (
     create_tokens_for_user,
     revoke_refresh_token,
@@ -16,7 +15,7 @@ from app.repositories.user_repositories import (
     get_user_by_username_repo,
 )
 
-logger = logging.getLogger("app.services.auth")
+logger = get_logger(name=__file__)
 
 
 async def authenticate_user(username: str, password: str, db: DBSession):
