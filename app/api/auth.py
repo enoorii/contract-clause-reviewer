@@ -7,7 +7,7 @@ from pwdlib.exceptions import UnknownHashError
 from app.api.deps import DBCurrrentUser
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
-from app.schemas.schemas import Token, UserCreate, UserResponse
+from app.schemas.users import Token, UserCreate, UserResponse
 from app.services.auth import authenticate_user, logout_user, refresh_access_token
 from app.services.user import create_user
 

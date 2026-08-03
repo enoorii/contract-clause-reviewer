@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from enum import IntEnum
 from typing import List
 from uuid import UUID, uuid4
 
@@ -7,12 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.types import DateTime
 from sqlmodel import Column, Field, Index, Relationship, SQLModel, Text
 
-
-class RiskLevel(IntEnum):
-    LOW = 0
-    AVERAGE = 1
-    HIGH = 2
-    CRITICAL = 3
+from app.core.enums import RiskLevel, Role
 
 
 class TimeStampMixin(SQLModel):
@@ -26,11 +20,24 @@ class TimeStampMixin(SQLModel):
     )
 
 
-class Users(SQLModel, table=True):
+class Users(TimeStampMixin, SQLModel, table=True):
     id: UUID | None = Field(primary_key=True, default=uuid4)
 
     username: str = Field(unique=True, min_length=3, max_length=50)
     password_hash: str
+
+    role: Role = Field(default=Role.USER)
+    must_change_password: bool = Field(
+        default=False, description="User must change password after first login"
+    )
+    is_active: bool = Field(default=True)
+
+    created_by: UUID | None = Field(foreign_key="users.id")
+    creator: Users | None = Relationship(
+        sa_relationship_kwargs={"remote_side": "Users.id"}
+    )
+
+    created_users: List[Users] = Relationship(back_populates="creator")
 
     analyses: List["Analysis"] = Relationship(
         back_populates="user", cascade_delete=True, passive_deletes=True
@@ -47,7 +54,7 @@ class Risk(SQLModel, table=True):
     id: int | None = Field(primary_key=True, default=None)
 
     risk_level: RiskLevel = Field(default=RiskLevel.AVERAGE)
-    explanation: str = Field(max_length=1000)
+    description: str = Field(max_length=1000)
 
     analysis_id: int = Field(foreign_key="analysis.id", ondelete="CASCADE")
 
