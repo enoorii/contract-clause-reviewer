@@ -28,11 +28,11 @@ class Users(TimeStampMixin, SQLModel, table=True):
 
     role: Role = Field(default=Role.USER)
     must_change_password: bool = Field(
-        default=False, description="User must change password after first login"
+        default=True, description="User must change password after first login"
     )
     is_active: bool = Field(default=True)
 
-    created_by: UUID | None = Field(foreign_key="users.id")
+    created_by: UUID | None = Field(foreign_key="users.id", default=None)
     creator: Users | None = Relationship(
         sa_relationship_kwargs={"remote_side": "Users.id"}
     )

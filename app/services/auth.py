@@ -1,7 +1,6 @@
 from pwdlib.exceptions import UnknownHashError
 
 from app.core.exceptions import AuthenticationError
-from app.infrastructure.logging import get_logger
 from app.core.security import (
     create_tokens_for_user,
     revoke_refresh_token,
@@ -11,6 +10,7 @@ from app.core.security import (
     verify_refresh_token,
 )
 from app.db.database import DBSession
+from app.infrastructure.logging import get_logger
 from app.repositories.user_repositories import (
     get_user_by_username_repo,
 )
@@ -47,7 +47,15 @@ async def authenticate_user_by_token(token: str, db: DBSession):
     if user is None:
         raise AuthenticationError("Invalid credentials")
 
-    return jti, user
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "is_active": user.is_active,
+        "must_change_password": user.must_change_password,
+    }
+
+    return jti, user_data
 
 
 async def logout_user(username: str, refresh_token: str, db: DBSession):

@@ -4,12 +4,12 @@ from fastapi import APIRouter, Body, Cookie, Depends, HTTPException, Response, s
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pwdlib.exceptions import UnknownHashError
 
-from app.api.deps import DBCurrrentUser
+from app.api.deps import CurrrentUser
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
-from app.schemas.users import Token, UserCreate, UserResponse
+from app.schemas.users import Token, UserCreate
 from app.services.auth import authenticate_user, logout_user, refresh_access_token
-from app.services.user import create_user
+
 
 router = APIRouter(prefix="/auth")
 
@@ -18,14 +18,14 @@ oauth2_scheme = OAuth2PasswordBearer(
     auto_error=False,
 )
 
+# # This is not used in admin-only JWT flow.
+# @router.post("/register", response_model=UserResponse)
+# async def register(user_data: Annotated[UserCreate, Body()], db: DBSession):
+#     user = await create_user(
+#         username=user_data.username, password=user_data.password, db=db
+#     )
 
-@router.post("/register", response_model=UserResponse)
-async def register(user_data: Annotated[UserCreate, Body()], db: DBSession):
-    user = await create_user(
-        username=user_data.username, password=user_data.password, db=db
-    )
-
-    return user
+#     return user
 
 
 @router.post("/login", response_model=Token)
@@ -115,7 +115,7 @@ async def refresh(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    current_user: DBCurrrentUser,
+    current_user: CurrrentUser,
     db: DBSession,
     response: Response,
     refresh_token_cookie: Annotated[
