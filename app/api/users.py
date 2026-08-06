@@ -18,6 +18,7 @@ from app.services.users import (
     change_password_by_id,
     delete_user_by_id,
     get_user_by_id,
+    get_user_by_username,
     get_users,
     update_user_by_id,
 )
@@ -100,12 +101,14 @@ async def change_password(
 
 @router.get("/me", response_model=UserDetailedResponse)
 async def get_profile(user: CurrrentUser, db: DBSession):
-    pass
+    user_data = await get_user_by_username(username=user.username, db=db)
+    return user_data
 
 
-@router.patch("/me", response_model=UserResponse)
+@router.patch("/me", response_model=UserDetailedResponse)
 async def update_profile(user: ActiveUser, new_username: str, db: DBSession):
-    pass
+    user_data = UserUpdate(username=new_username)
+    return await update_user_by_id(user_id=user.id, user_data=user_data, db=db)
 
 
 @router.patch("/me/password", response_model=UserResponse)

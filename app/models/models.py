@@ -79,7 +79,7 @@ class Analysis(TimeStampMixin, SQLModel, table=True):
 
 
 class RefreshToken(SQLModel, table=True):
-    id: UUID | None = Field(primary_key=True, default_factory=uuid4)
+    id: UUID = Field(primary_key=True, default_factory=uuid4)
     token_hash: str = Field(index=True)  # Indexed for faster lookups
 
     # Token management
@@ -103,15 +103,6 @@ class RefreshToken(SQLModel, table=True):
 
     # Device Tracking
     user_agent: str | None = Field(default=None, max_length=512)
-    device_type: str | None = Field(
-        default=None, max_length=50
-    )  # mobile, desktop, tablet
-    browser: str | None = Field(default=None, max_length=100)
-    os: str | None = Field(default=None, max_length=100)
-
-    # Location (optional, if you want to track geo location)
-    country: str | None = Field(default=None, max_length=100)
-    city: str | None = Field(default=None, max_length=100)
 
     # Relationships
     user_id: UUID | None = Field(foreign_key="users.id", ondelete="CASCADE", index=True)

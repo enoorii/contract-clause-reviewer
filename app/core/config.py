@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     DEFAULT_PER_PAGE: int = 10
 
     SECRET_KEY: str = "secretkey"
-    ADMIN_USER: str = "admin"
-    ADMIN_PASS: str = "admin"
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin"
 
     ACCESS_TOKEN_EXPIRATION_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRATION_DAYS: int = 30

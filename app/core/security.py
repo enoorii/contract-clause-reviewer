@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from asyncio import to_thread
 from dataclasses import dataclass
@@ -12,6 +13,11 @@ from app.core.config import Settings
 from app.db.database import DBSession
 from app.models.models import RefreshToken, Users
 
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 password_hash = PasswordHash.recommended()
 
 hash_password = PasswordHash.recommended().hash
@@ -19,6 +25,17 @@ hash_password = PasswordHash.recommended().hash
 
 def verify_password(password_hash: str, password: str):
     return PasswordHash.recommended().verify(hash=password_hash, password=password)
+
+
+# Async public API
+async def hash_password_async(password: str) -> str:
+    """Hash password in thread pool to avoid blocking event loop"""
+    return await to_thread(hash_password, password)
+
+
+async def verify_password_async(password_hash: str, password: str) -> bool:
+    """Verify password in thread pool to avoid blocking event loop"""
+    return await to_thread(verify_password, password_hash, password)
 
 
 @dataclass
@@ -46,7 +63,9 @@ async def create_refresh_token() -> str:
 
 
 async def store_refresh_token(
-    db: DBSession, user: Users, raw_token: str
+    user: Users,
+    raw_token: str,
+    db: DBSession,
 ) -> RefreshToken:
     """Hash and store a refresh token in the database. Returns the stored token object."""
     token_hash = await to_thread(password_hash.hash, raw_token)
@@ -149,6 +168,7 @@ async def rotate_refresh_token(old_raw_token: str, db: DBSession) -> dict:
     new_refresh_token = RefreshToken(
         token_hash=new_token_hash,
         user_id=user.id,
+        created_ip=old_token.created_ip,
         expires_at=old_token.expires_at,  # ← crucial: preserve original expiry
         is_revoked=False,
         last_used_at=datetime.now(timezone.utc),
@@ -166,24 +186,9 @@ async def create_tokens_for_user(user: Users, db: DBSession) -> dict:
     """Generate new access and refresh tokens for a user (login)."""
     access_token = await create_access_token(user)
     raw_refresh = await create_refresh_token()
-    await store_refresh_token(db, user, raw_refresh)
+    await store_refresh_token(user=user, raw_token=raw_refresh, db=db)
     return {
         "access_token": access_token,
         "refresh_token": raw_refresh,
         "token_type": "bearer",
     }
-
-
-async def revoke_refresh_token(raw_token: str, db: DBSession):
-    try:
-        token_hash = await to_thread(password_hash.hash, raw_token)
-        result = await db.exec(
-            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
-        )
-
-        stored_token = result.one()
-
-        stored_token.is_revoked = True
-        db.add(stored_token)
-    except Exception:
-        return True

@@ -2,7 +2,10 @@ from uuid import UUID
 
 from app.core.enums import Role
 from app.core.exceptions import AuthenticationError
-from app.core.security import hash_password, verify_password
+from app.core.security import (
+    hash_password_async,
+    verify_password_async,
+)
 from app.db.database import DBSession
 from app.repositories.user_repositories import (
     create_user_repo,
@@ -32,7 +35,7 @@ async def create_user(
     existing = await get_user_by_username_repo(username=username, db=db)
     if existing:
         raise ValueError("Username already exist")
-    password_hash = hash_password(password=password)
+    password_hash = await hash_password_async(password=password)
     user = await create_user_repo(
         username=username,
         password_hash=password_hash,
@@ -99,7 +102,7 @@ async def change_password_by_id(
 ):
     user = await get_user_by_id_repo(user_id=user_id, db=db)
 
-    if not verify_password(
+    if not await verify_password_async(
         password=password_data.old_password, password_hash=user.password_hash
     ):
         raise AuthenticationError("Your old password is wrong.")
@@ -107,8 +110,10 @@ async def change_password_by_id(
     user = await update_user_by_id_repo(
         user_id=user_id,
         user_data={
-            "password_hash": hash_password(password_data.new_password),
-            "must_change_password": True,
+            "password_hash": await hash_password_async(
+                password=password_data.new_password
+            ),
+            "must_change_password": False,
         },
         db=db,
     )

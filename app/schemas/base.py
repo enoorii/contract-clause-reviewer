@@ -26,3 +26,13 @@ def validate_password(v: str) -> str:
 
 
 StrongPassword = Annotated[str, AfterValidator(validate_password)]
+
+
+class ClientInfo(BaseModel):
+    created_ip: str | None = None
+    user_agent: str | None = None
+    browser: str | None = None
+    os: str | None = None
+    device_type: str | None = None
+    country: str | None = None
+    city: str | None = None

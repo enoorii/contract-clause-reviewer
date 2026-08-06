@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import func, select
 
 from app.core.enums import Role
@@ -22,14 +23,22 @@ async def create_user_repo(
     return user
 
 
-async def get_user_by_username_repo(username: str, db: DBSession):
+async def get_user_by_username_repo(
+    username: str, db: DBSession, options: list[ORMOption] | None = None
+):
     stm = select(Users).where(Users.username == username)
     result = (await db.exec(stm)).one()
     return result
 
 
-async def get_user_by_id_repo(user_id: UUID, db: DBSession):
+async def get_user_by_id_repo(
+    user_id: UUID, db: DBSession, options: list[ORMOption] | None = None
+):
     stm = select(Users).where(Users.id == user_id)
+
+    if options is not None:
+        stm = stm.options(*options)
+
     result = (await db.exec(stm)).one()
     return result
 

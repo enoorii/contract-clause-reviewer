@@ -66,17 +66,6 @@ async def get_current_user(
 CurrrentUser = Annotated[AuthUser, Depends(get_current_user)]
 
 
-async def require_admin(user: CurrrentUser):
-    if user.role != Role.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
-        )
-    return user
-
-
-AdminUser = Annotated[AuthUser, Depends(require_admin)]
-
-
 async def require_active(user: CurrrentUser):
     if not user.user_active:
         raise HTTPException(
@@ -92,3 +81,14 @@ async def require_active(user: CurrrentUser):
 
 
 ActiveUser = Annotated[AuthUser, Depends(require_active)]
+
+
+async def require_admin(user: ActiveUser):
+    if user.role != Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
+        )
+    return user
+
+
+AdminUser = Annotated[AuthUser, Depends(require_admin)]

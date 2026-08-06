@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.database import async_engine
+from app.db.seed import seed_admin_user
 from app.infrastructure.logging import setup_logging, shutdown_logging
 from app.middleware.request_logging import RequestLogMiddleware
 
@@ -13,6 +15,9 @@ async def lifespan(app: FastAPI):
     print("🚀 Setting up async logging...")
     setup_logging()
     print("✅ Async logging initialized")
+
+    async with AsyncSession(async_engine) as db:
+        await seed_admin_user(db=db)
 
     yield
 
