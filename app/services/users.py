@@ -14,7 +14,6 @@ from app.repositories.user_repositories import (
     get_user_by_username_repo,
     get_users_repo,
     get_users_total,
-    update_user_by_id_repo,
 )
 from app.schemas.users import PasswordChange, UserFilters, UserUpdate
 
@@ -87,7 +86,10 @@ async def get_user_by_id(user_id: UUID, db: DBSession):
 async def update_user_by_id(user_id: UUID, user_data: UserUpdate, db: DBSession):
     """Update an existing user."""
     update_data = user_data.model_dump(exclude_unset=True)
-    user = await update_user_by_id_repo(user_id=user_id, user_data=update_data, db=db)
+    user = await get_user_by_id_repo(user_id=user_id, db=db)
+
+    user.sqlmodel_update(update_data)
+
     return user
 
 
@@ -107,15 +109,13 @@ async def change_password_by_id(
     ):
         raise AuthenticationError("Your old password is wrong.")
 
-    user = await update_user_by_id_repo(
-        user_id=user_id,
-        user_data={
+    user.sqlmodel_update(
+        {
             "password_hash": await hash_password_async(
                 password=password_data.new_password
             ),
             "must_change_password": False,
-        },
-        db=db,
+        }
     )
 
     return user

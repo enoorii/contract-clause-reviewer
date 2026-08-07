@@ -21,7 +21,7 @@ class TimeStampMixin(SQLModel):
 
 
 class Users(TimeStampMixin, SQLModel, table=True):
-    id: UUID | None = Field(primary_key=True, default=uuid4)
+    id: UUID = Field(primary_key=True, default_factory=uuid4)
 
     username: str = Field(unique=True, min_length=3, max_length=50)
     password_hash: str
