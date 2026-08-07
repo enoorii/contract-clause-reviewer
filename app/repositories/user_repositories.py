@@ -18,7 +18,14 @@ async def create_user_repo(
     must_change_password: bool = True,
     is_active: bool = True,
 ):
-    user = Users(username=username, password_hash=password_hash)
+    user = Users(
+        username=username,
+        password_hash=password_hash,
+        created_by=created_by,
+        is_active=is_active,
+        role=role,
+        must_change_password=must_change_password,
+    )
     db.add(user)
     return user
 
@@ -41,19 +48,6 @@ async def get_user_by_id_repo(
 
     result = (await db.exec(stm)).one()
     return result
-
-
-async def update_user_by_id_repo(user_id: UUID, user_data: dict, db: DBSession):
-    """Update an existing user."""
-    user = await get_user_by_id_repo(user_id=user_id, db=db)
-
-    user.sqlmodel_update(user_data)
-
-    db.add(user)
-    await db.flush()
-    await db.refresh(user)
-
-    return user
 
 
 async def get_users_repo(filters: UserFilters, db: DBSession):
