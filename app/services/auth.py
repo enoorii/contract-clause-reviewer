@@ -191,7 +191,6 @@ async def refresh_access_token(
         token_store=token_store,
         secret_key=setting.SECRET_KEY,
         access_expiration_minutes=setting.ACCESS_TOKEN_EXPIRATION_MINUTES,
-        refresh_expiration_days=setting.REFRESH_TOKEN_EXPIRATION_DAYS,
         new_ip=client_info.created_ip if client_info else None,
         new_user_agent=client_info.user_agent if client_info else None,
     )

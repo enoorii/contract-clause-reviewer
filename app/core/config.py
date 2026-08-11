@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import computed_field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DEV_MODE: bool = False
     DEFAULT_PER_PAGE: int = 10
 
-    SECRET_KEY: str = "secretkey"
+    SECRET_KEY: str = Field(min_length=32, default="THISISSECRETKEYforYourFastAPIApp")
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin"
 

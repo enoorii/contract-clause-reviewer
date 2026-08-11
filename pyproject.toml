@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "freezegun>=1.5.5",
     "ipython>=9.16.0",
     "py-pglite[sqlalchemy]>=0.5.3",
     "pytest>=9.1.1",

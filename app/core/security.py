@@ -149,7 +149,6 @@ async def rotate_refresh_token(
     token_store: TokenStore,
     secret_key: str,
     access_expiration_minutes: int,
-    refresh_expiration_days: int,
     new_ip: Optional[str] = None,
     new_user_agent: Optional[str] = None,
 ) -> dict:
