@@ -7,7 +7,7 @@ from sqlmodel import asc, col, desc
 from sqlmodel.sql.expression import SelectOfScalar
 
 from app.core.enums import Role
-from app.models.models import Users
+from app.models.models import User
 from app.schemas.analysis import AnalysisSummaryResponse
 from app.schemas.base import StrongPassword
 
@@ -40,22 +40,22 @@ class UserFilters(BaseModel):
         """Apply all filters to query"""
         if self.search:
             search_pattern = f"%{self.search}%"
-            stm = stm.where(col(Users.username).ilike(search_pattern))
+            stm = stm.where(col(User.username).ilike(search_pattern))
         if self.from_date:
             from_date = self.from_date
             if from_date.tzinfo is None:
                 from_date = from_date.replace(tzinfo=UTC)
-            stm = stm.where(Users.created_at >= from_date)
+            stm = stm.where(User.created_at >= from_date)
         if self.to_date:
             to_date = self.to_date
             if to_date.tzinfo is None:
                 to_date = to_date.replace(tzinfo=UTC)
-            stm = stm.where(Users.created_at <= to_date)
+            stm = stm.where(User.created_at <= to_date)
         return stm
 
     def apply_ordering(self, stm: SelectOfScalar) -> SelectOfScalar:
         """Apply sorting/ordering to query"""
-        order_col = Users.created_at
+        order_col = User.created_at
 
         if self.sort == Sort.ASC:
             return stm.order_by(asc(order_col))
@@ -94,7 +94,7 @@ class UserResponse(BaseModel):
 class UserDetailedResponse(BaseModel):
     id: UUID
     username: str
-    analyses: list[AnalysisSummaryResponse]
+    analyses: list[AnalysisSummaryResponse] | None = Field(default=None)
 
 
 class PasswordChange(BaseModel):
@@ -111,3 +111,7 @@ class LoginResponse(BaseModel):
     access_token: str
     refresh_token: str
     must_change_password: bool
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

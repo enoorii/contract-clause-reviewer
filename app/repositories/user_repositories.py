@@ -5,7 +5,7 @@ from sqlmodel import func, select
 
 from app.core.enums import Role
 from app.db.database import DBSession
-from app.models.models import Users
+from app.models.models import User
 from app.schemas.users import UserFilters
 
 
@@ -18,7 +18,7 @@ async def create_user_repo(
     must_change_password: bool = True,
     is_active: bool = True,
 ):
-    user = Users(
+    user = User(
         username=username,
         password_hash=password_hash,
         created_by=created_by,
@@ -33,7 +33,9 @@ async def create_user_repo(
 async def get_user_by_username_repo(
     username: str, db: DBSession, options: list[ORMOption] | None = None
 ):
-    stm = select(Users).where(Users.username == username)
+    stm = select(User).where(User.username == username)
+    if options is not None:
+        stm = stm.options(*options)
     result = (await db.exec(stm)).one()
     return result
 
@@ -41,7 +43,7 @@ async def get_user_by_username_repo(
 async def get_user_by_id_repo(
     user_id: UUID, db: DBSession, options: list[ORMOption] | None = None
 ):
-    stm = select(Users).where(Users.id == user_id)
+    stm = select(User).where(User.id == user_id)
 
     if options is not None:
         stm = stm.options(*options)
@@ -52,7 +54,7 @@ async def get_user_by_id_repo(
 
 async def get_users_repo(filters: UserFilters, db: DBSession):
     # Build base statement
-    stm = select(Users)
+    stm = select(User)
 
     # Apply filtering
     stm = filters.apply_to_query(stm=stm)
@@ -71,7 +73,7 @@ async def get_users_repo(filters: UserFilters, db: DBSession):
 
 async def get_users_total(filters: UserFilters, db: DBSession):
     # Build base statement
-    stm = select(Users)
+    stm = select(User)
 
     # Apply filtering
     stm = filters.apply_to_query(stm=stm)
@@ -86,6 +88,7 @@ async def get_users_total(filters: UserFilters, db: DBSession):
 async def delete_user_by_id_repo(user_id: UUID, db: DBSession):
     user = await get_user_by_id_repo(user_id=user_id, db=db)
 
-    user.is_active = False
+    if user is not None:
+        user.is_active = False
 
     db.add(user)

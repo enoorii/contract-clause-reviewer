@@ -5,7 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import setting
 from app.core.enums import Role
 from app.core.security import hash_password_async
-from app.models.models import Users
+from app.models.models import User
 
 
 async def seed_admin_user(db: AsyncSession) -> bool:
@@ -15,7 +15,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
 
     # Check if admin exists
     existing_admin = (
-        await db.exec(select(Users).where(Users.username == setting.ADMIN_USERNAME))
+        await db.exec(select(User).where(User.username == setting.ADMIN_USERNAME))
     ).first()
 
     if existing_admin:
@@ -23,7 +23,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
         return False
 
     # Create admin
-    admin = Users(
+    admin = User(
         username=setting.ADMIN_USERNAME,
         password_hash=await hash_password_async(setting.ADMIN_PASSWORD),
         role=Role.ADMIN,

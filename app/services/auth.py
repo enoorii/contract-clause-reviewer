@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from typing import Optional, cast
 from uuid import UUID
 
-import jwt
 from pwdlib.exceptions import UnknownHashError
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from app.core.config import setting
@@ -20,7 +20,7 @@ from app.core.security import (
 )
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
-from app.models.models import RefreshToken, Users
+from app.models.models import RefreshToken, User
 from app.repositories.refresh_token_repositories import (
     get_refresh_token_by_hash,
     revoke_refresh_token_by_hash,
@@ -43,11 +43,14 @@ class DatabaseTokenStore(TokenStore):
     async def get_refresh_token_by_hash(
         self, token_hash: str
     ) -> Optional[RefreshTokenData]:
-        token = await get_refresh_token_by_hash(
-            token_hash=token_hash,
-            db=self.db,
-            options=[selectinload(cast(InstrumentedAttribute, RefreshToken.user))],
-        )
+        try:
+            token = await get_refresh_token_by_hash(
+                token_hash=token_hash,
+                db=self.db,
+                options=[selectinload(cast(InstrumentedAttribute, RefreshToken.user))],
+            )
+        except (NoResultFound, MultipleResultsFound):
+            return None
         if not token:
             return None
         return RefreshTokenData(
@@ -74,13 +77,24 @@ class DatabaseTokenStore(TokenStore):
         self.db.add(refresh_token)
 
     async def revoke_refresh_token(self, token_hash: str) -> None:
-        await revoke_refresh_token_by_hash(token_hash=token_hash, db=self.db)
+        try:
+            await revoke_refresh_token_by_hash(token_hash=token_hash, db=self.db)
+        except (NoResultFound, MultipleResultsFound):
+            # Token not found or multiple found - nothing to revoke
+            pass
 
     async def update_refresh_token_usage(self, token_hash: str) -> None:
-        await update_refresh_token_usage_by_hash(token_hash=token_hash, db=self.db)
+        try:
+            await update_refresh_token_usage_by_hash(token_hash=token_hash, db=self.db)
+        except (NoResultFound, MultipleResultsFound):
+            # Token not found or multiple found - nothing to update
+            pass
 
     async def get_user_by_id(self, user_id: str) -> Optional[dict]:
-        user = await get_user_by_id_repo(user_id=UUID(user_id), db=self.db)
+        try:
+            user = await get_user_by_id_repo(user_id=UUID(user_id), db=self.db)
+        except (NoResultFound, MultipleResultsFound):
+            return None
         if not user:
             return None
         return {
@@ -99,10 +113,15 @@ async def authenticate_user(
     client_info: ClientInfo,
 ):
     """Authenticate user and create tokens."""
-    user = await get_user_by_username_repo(username=username, db=db)
+    try:
+        user = await get_user_by_username_repo(username=username, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
     if user is None:
         raise AuthenticationError("Invalid credentials")
 
+    if not user.is_active:
+        raise AuthenticationError("Account is disabled")
     try:
         password_valid = await verify_password_async(
             password=password,
@@ -130,19 +149,14 @@ async def authenticate_user(
 
 async def authenticate_user_by_token(token: str, db: DBSession):
     """Authenticate user via access token."""
+    jti, username = await verify_access_token(
+        token=token,
+        secret_key=setting.SECRET_KEY,
+    )
+
     try:
-        jti, username = await verify_access_token(
-            token=token,
-            secret_key=setting.SECRET_KEY,
-        )
-    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError) as e:
-        raise AuthenticationError("Invalid credentials") from e
-
-    if username is None:
-        raise AuthenticationError("Invalid credentials")
-
-    user = await get_user_by_username_repo(username=username, db=db)
-    if user is None:
+        user = await get_user_by_username_repo(username=username, db=db)
+    except (NoResultFound, MultipleResultsFound):
         raise AuthenticationError("Invalid credentials")
 
     user_data = {
@@ -157,16 +171,22 @@ async def authenticate_user_by_token(token: str, db: DBSession):
 
 async def logout_user(username: str, refresh_token: str, db: DBSession):
     """Revoke the refresh token if it belongs to the user."""
-    user = await get_user_by_username_repo(username=username, db=db)
+    try:
+        user = await get_user_by_username_repo(username=username, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
     if not user:
         raise AuthenticationError("Invalid credentials")
 
-    token_hash = hash_token(refresh_token)  # need to import hash_token
-    token = await get_refresh_token_by_hash(
-        token_hash=token_hash,
-        db=db,
-        options=[selectinload(cast(InstrumentedAttribute, RefreshToken.user))],
-    )
+    token_hash = hash_token(refresh_token)
+    try:
+        token = await get_refresh_token_by_hash(
+            token_hash=token_hash,
+            db=db,
+            options=[selectinload(cast(InstrumentedAttribute, RefreshToken.user))],
+        )
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
     if not token or token.user.username != username:
         raise AuthenticationError("Invalid credentials")
 
@@ -199,11 +219,14 @@ async def refresh_access_token(
 
 async def expire_user_sessions(user_id: UUID, db: DBSession):
     """Revoke all refresh tokens for a user."""
-    user = await get_user_by_id_repo(
-        user_id=user_id,
-        db=db,
-        options=[selectinload(cast(InstrumentedAttribute, Users.refresh_tokens))],
-    )
+    try:
+        user = await get_user_by_id_repo(
+            user_id=user_id,
+            db=db,
+            options=[selectinload(cast(InstrumentedAttribute, User.refresh_tokens))],
+        )
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("User not found")
     if not user:
         raise AuthenticationError("User not found")
 

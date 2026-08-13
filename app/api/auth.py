@@ -14,7 +14,7 @@ from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
 from app.schemas.base import ClientInfo
-from app.schemas.users import Token, UserCreate
+from app.schemas.users import RefreshTokenRequest, Token, UserCreate
 from app.services.auth import (
     authenticate_user,
     logout_user,
@@ -201,7 +201,7 @@ async def login_oauth(
 
 @router.post("/refresh", response_model=Token, summary="Refresh Access Token Here")
 async def refresh(
-    refresh_token: Annotated[str, Body(...)],
+    request_data: RefreshTokenRequest,
     db: DBSession,
     request: Request,
 ):
@@ -214,7 +214,7 @@ async def refresh(
     )
 
     try:
-        new_tokens = await refresh_access_token(token=refresh_token, db=db)
+        new_tokens = await refresh_access_token(token=request_data.refresh_token, db=db)
     except AuthenticationError as e:
         logger.warning(
             "Failed token refresh attempt from IP: %s - %s",
@@ -251,12 +251,13 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     current_user: CurrrentUser,
-    refresh_token: Annotated[str, Body(...)],
+    request_data: RefreshTokenRequest,
     db: DBSession,
     request: Request,
 ):
     """
     Logout user by revoking their refresh token.
+    This endpoint is idempotent - always returns 204 No Content.
     """
     logger.info(
         "User %s (ID: %s) attempting to logout from IP: %s",
@@ -268,27 +269,20 @@ async def logout(
     try:
         await logout_user(
             username=current_user.username,
-            refresh_token=refresh_token,
+            refresh_token=request_data.refresh_token,
             db=db,
         )
-    except ValueError as e:
-        logger.warning(
-            "Invalid token during logout for user %s: %s",
+        # Success logs after successful logout
+        logger.info(
+            "User %s (ID: %s) logged out successfully from IP: %s",
             current_user.username,
-            str(e),
+            current_user.id,
+            request.client.host if request.client else None,
         )
-
         logger.user_action(
             action="LOGOUT",
             username=current_user.username,
             request=request,
-            status="FAILED",
-            error="Invalid token",
-        )
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid token: {str(e)}",
         )
     except AuthenticationError as e:
         logger.warning(
@@ -296,7 +290,6 @@ async def logout(
             current_user.username,
             str(e),
         )
-
         logger.user_action(
             action="LOGOUT",
             username=current_user.username,
@@ -304,11 +297,21 @@ async def logout(
             status="FAILED",
             error=str(e),
         )
-
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+        # Idempotent - still return 204
+    except ValueError as e:
+        logger.warning(
+            "Invalid token during logout for user %s: %s",
+            current_user.username,
+            str(e),
         )
+        logger.user_action(
+            action="LOGOUT",
+            username=current_user.username,
+            request=request,
+            status="FAILED",
+            error="Invalid token",
+        )
+        # Idempotent - still return 204
     except Exception as e:
         logger.error(
             "Unexpected error during logout for user %s: %s",
@@ -316,7 +319,6 @@ async def logout(
             str(e),
             exc_info=True,
         )
-
         logger.user_action(
             action="LOGOUT",
             username=current_user.username,
@@ -324,25 +326,11 @@ async def logout(
             status="FAILED",
             error="Unexpected error",
         )
+        # For unexpected errors, we still return 204 to maintain idempotency
+        # but log as error for monitoring
 
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Logout failed",
-        )
-
-    # Success logs after try block
-    logger.info(
-        "User %s (ID: %s) logged out successfully from IP: %s",
-        current_user.username,
-        current_user.id,
-        request.client.host if request.client else None,
-    )
-
-    logger.user_action(
-        action="LOGOUT",
-        username=current_user.username,
-        request=request,
-    )
+    # Always return 204 No Content
+    return None
 
 
 @router.post("/sessions/expire/{user_id}")
@@ -362,7 +350,47 @@ async def expire_user_sessions(
         user_id,
     )
 
-    user = await get_user_by_id(user_id=user_id, db=db)
+    try:
+        user = await get_user_by_id(user_id=user_id, db=db)
+    except AuthenticationError as e:
+        logger.warning(
+            "Authentication error when fetching user %s: %s",
+            user_id,
+            str(e),
+        )
+        logger.admin_action(
+            action="SESSIONS_EXPIRE",
+            status="FAILED",
+            admin_id=admin.id,
+            admin_username=admin.username,
+            target_user_id=user_id,
+            request=request,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {UUID} not found",
+        )
+    except Exception as e:
+        logger.error(
+            "Unexpected error when fetching user %s: %s",
+            user_id,
+            str(e),
+            exc_info=True,
+        )
+        logger.admin_action(
+            action="SESSIONS_EXPIRE",
+            status="FAILED",
+            admin_id=admin.id,
+            admin_username=admin.username,
+            target_user_id=user_id,
+            request=request,
+            error="Failed to fetch user",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch user",
+        )
 
     if user is None:
         logger.warning(
@@ -389,6 +417,29 @@ async def expire_user_sessions(
 
     try:
         result = await expire_user_sessions_service(user_id=user_id, db=db)
+    except AuthenticationError as e:
+        logger.warning(
+            "Authentication error expiring sessions for user %s (ID: %s): %s",
+            user.username,
+            user_id,
+            str(e),
+        )
+
+        logger.admin_action(
+            action="SESSIONS_EXPIRE",
+            status="FAILED",
+            admin_id=admin.id,
+            admin_username=admin.username,
+            target_user=user.username,
+            target_user_id=user_id,
+            request=request,
+            error=str(e),
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        )
     except Exception as e:
         logger.error(
             "Admin %s failed to expire sessions for user %s (ID: %s): %s",
@@ -432,4 +483,4 @@ async def expire_user_sessions(
         request=request,
     )
 
-    return result
+    return {"detail": f"Sessions for {result.username} expired"}

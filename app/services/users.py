@@ -1,4 +1,8 @@
+from typing import cast
 from uuid import UUID
+
+from sqlalchemy.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from app.core.enums import Role
 from app.core.exceptions import AuthenticationError
@@ -7,6 +11,7 @@ from app.core.security import (
     verify_password_async,
 )
 from app.db.database import DBSession
+from app.models.models import User
 from app.repositories.user_repositories import (
     create_user_repo,
     delete_user_by_id_repo,
@@ -19,7 +24,14 @@ from app.schemas.users import PasswordChange, UserFilters, UserUpdate
 
 
 async def get_user_by_username(username: str, db: DBSession):
-    return await get_user_by_username_repo(username=username, db=db)
+    try:
+        return await get_user_by_username_repo(
+            username=username,
+            db=db,
+            options=[selectinload(cast(InstrumentedAttribute, User.analyses))],
+        )
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
 
 
 async def create_user(
@@ -31,7 +43,10 @@ async def create_user(
     must_change_password: bool = True,
     is_active: bool = True,
 ):
-    existing = await get_user_by_username_repo(username=username, db=db)
+    try:
+        existing = await get_user_by_username_repo(username=username, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        existing = None
     if existing:
         raise ValueError("Username already exist")
     password_hash = await hash_password_async(password=password)
@@ -51,7 +66,10 @@ async def create_user(
 async def get_users(db: DBSession, filters: UserFilters) -> dict:
     """Get all tasks with filtering, ordering, and pagination."""
 
-    total = await get_users_total(filters=filters, db=db)
+    try:
+        total = await get_users_total(filters=filters, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        total = 0
 
     assert isinstance(filters.size, int) and isinstance(filters.page, int)
     # Calculate pages
@@ -65,7 +83,10 @@ async def get_users(db: DBSession, filters: UserFilters) -> dict:
     if filters.page > max_page and total > 0:
         raise ValueError(f"Page {filters.page} not found. Max page is {max_page}")
 
-    users = await get_users_repo(filters=filters, db=db)
+    try:
+        users = await get_users_repo(filters=filters, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        users = []
 
     return {
         "items": users,
@@ -78,15 +99,20 @@ async def get_users(db: DBSession, filters: UserFilters) -> dict:
 
 async def get_user_by_id(user_id: UUID, db: DBSession):
     """Get a single user by ID."""
-    user = await get_user_by_id_repo(user_id=user_id, db=db)
-
+    try:
+        user = await get_user_by_id_repo(user_id=user_id, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
     return user
 
 
 async def update_user_by_id(user_id: UUID, user_data: UserUpdate, db: DBSession):
     """Update an existing user."""
     update_data = user_data.model_dump(exclude_unset=True)
-    user = await get_user_by_id_repo(user_id=user_id, db=db)
+    try:
+        user = await get_user_by_id_repo(user_id=user_id, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
 
     user.sqlmodel_update(update_data)
 
@@ -95,14 +121,20 @@ async def update_user_by_id(user_id: UUID, user_data: UserUpdate, db: DBSession)
 
 async def delete_user_by_id(user_id: UUID, db: DBSession):
     """Soft delete an existing user."""
-    user = await delete_user_by_id_repo(user_id=user_id, db=db)
+    try:
+        user = await delete_user_by_id_repo(user_id=user_id, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
     return user
 
 
 async def change_password_by_id(
     user_id: UUID, password_data: PasswordChange, db: DBSession
 ):
-    user = await get_user_by_id_repo(user_id=user_id, db=db)
+    try:
+        user = await get_user_by_id_repo(user_id=user_id, db=db)
+    except (NoResultFound, MultipleResultsFound):
+        raise AuthenticationError("Invalid credentials")
 
     if not await verify_password_async(
         password=password_data.old_password, password_hash=user.password_hash

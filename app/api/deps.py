@@ -10,6 +10,7 @@ from pydantic.config import ConfigDict
 from sqlalchemy.exc import NoResultFound
 
 from app.core.enums import Role
+from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.services.auth import authenticate_user_by_token
 
@@ -18,7 +19,7 @@ class AuthUser(BaseModel):
     id: UUID
     username: str
     role: Role
-    user_active: bool
+    is_active: bool
     must_change_password: bool
     source: str = "jwt"
     jti: str | None = None
@@ -36,6 +37,7 @@ async def get_current_user(
     """Main authentication dependency. Handles both API key and JWT."""
 
     token = credentials.credentials
+
     # JWT token must be present
     if not token:
         raise HTTPException(
@@ -60,6 +62,13 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return AuthUser(jti=jti, **user_data)
 
 
@@ -67,9 +76,9 @@ CurrrentUser = Annotated[AuthUser, Depends(get_current_user)]
 
 
 async def require_active(user: CurrrentUser):
-    if not user.user_active:
+    if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User is not active"
         )
     if user.must_change_password:
         raise HTTPException(
