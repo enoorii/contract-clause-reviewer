@@ -1,4 +1,6 @@
 # app/api/deps.py
+
+from functools import lru_cache
 from typing import Annotated
 from uuid import UUID
 
@@ -13,6 +15,7 @@ from app.core.enums import Role
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.services.auth import authenticate_user_by_token
+from app.services.document_analyzer import LegalDocumentAnalyzer
 
 
 class AuthUser(BaseModel):
@@ -101,3 +104,12 @@ async def require_admin(user: ActiveUser):
 
 
 AdminUser = Annotated[AuthUser, Depends(require_admin)]
+
+
+@lru_cache()
+def get_analyzer() -> LegalDocumentAnalyzer:
+    """Singleton analyzer instance for API endpoints"""
+    return LegalDocumentAnalyzer()
+
+
+DocumentAnalyzer = Annotated[LegalDocumentAnalyzer, Depends(get_analyzer)]

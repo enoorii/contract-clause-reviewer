@@ -4,3 +4,7 @@ class AuthenticationError(Exception):
 
 class PasswordChangeRequiredError(Exception):
     pass
+
+
+class OutOfRange(Exception):
+    pass

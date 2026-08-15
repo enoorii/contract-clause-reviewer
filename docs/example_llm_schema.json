@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "LegalClause": {
+      "description": "Individual legal clause analysis",
+      "properties": {
+        "clause_type": {
+          "description": "Type of clause (e.g., 'indemnification', 'termination', 'liability', 'confidentiality')",
+          "title": "Clause Type",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Brief summary of what this clause does",
+          "title": "Summary",
+          "type": "string"
+        },
+        "risk_level": { "$ref": "#/$defs/RiskLevel" },
+        "key_terms": {
+          "description": "List of important terms or phrases in this clause",
+          "items": { "type": "string" },
+          "title": "Key Terms",
+          "type": "array"
+        },
+        "suggested_actions": {
+          "description": "Recommended actions or negotiation points",
+          "items": { "type": "string" },
+          "title": "Suggested Actions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "clause_type",
+        "summary",
+        "risk_level",
+        "key_terms",
+        "suggested_actions"
+      ],
+      "title": "LegalClause",
+      "type": "object"
+    },
+    "RiskLevel": {
+      "enum": ["low", "average", "high", "critical"],
+      "title": "RiskLevel",
+      "type": "string"
+    }
+  },
+  "description": "Complete legal document analysis response structure",
+  "properties": {
+    "document_summary": {
+      "description": "Overall summary of the document's purpose and key points",
+      "title": "Document Summary",
+      "type": "string"
+    },
+    "document_type": {
+      "description": "Type of legal document (e.g., 'NDA', 'Employment Contract', 'Service Agreement')",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "overall_risk_score": {
+      "description": "Overall risk score from 1-10 (10 being highest risk)",
+      "title": "Overall Risk Score",
+      "type": "integer"
+    },
+    "clauses": {
+      "items": { "$ref": "#/$defs/LegalClause" },
+      "title": "Clauses",
+      "type": "array"
+    },
+    "recommendations": {
+      "description": "Overall recommendations for the document",
+      "items": { "type": "string" },
+      "title": "Recommendations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "document_summary",
+    "document_type",
+    "overall_risk_score",
+    "clauses",
+    "recommendations"
+  ],
+  "title": "LegalDocumentAnalysis",
+  "type": "object"
+}
