@@ -1,8 +1,11 @@
 # app/services/analysis.py
+from typing import cast
 from uuid import UUID
 
 from celery.result import AsyncResult
 from celery.states import FAILURE, PENDING, STARTED, SUCCESS
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from app.core.celery import celery_app
 from app.core.enums import RiskLevel
@@ -196,4 +199,8 @@ async def get_analysis_detail(
     db: DBSession,
 ) -> Analysis | None:
     """Get a single analysis with all clauses."""
-    return await get_analysis_by_id_repo(analysis_id, db)
+    return await get_analysis_by_id_repo(
+        analysis_id,
+        db,
+        options=[selectinload(cast(InstrumentedAttribute, Analysis.clauses))],
+    )

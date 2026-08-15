@@ -3,6 +3,7 @@
 from typing import Sequence
 from uuid import UUID
 
+from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import asc, col, desc, func, select
 
 from app.core.filters.analysis import AnalysisFilters, AnalysisSortBy, Sort
@@ -120,18 +121,20 @@ async def get_analysis_by_task_id_repo(
     db: DBSession,
 ) -> Analysis | None:
     """Retrieve analysis by Celery task ID."""
-    stmt = select(Analysis).where(Analysis.task_id == task_id)
-    result = await db.exec(stmt)
+    stm = select(Analysis).where(Analysis.task_id == task_id)
+    result = await db.exec(stm)
     return result.first()
 
 
 async def get_analysis_by_id_repo(
-    analysis_id: int,
-    db: DBSession,
+    analysis_id: int, db: DBSession, options: list[ORMOption] | None = None
 ) -> Analysis | None:
     """Retrieve analysis with clauses eager loaded."""
-    stmt = select(Analysis).where(Analysis.id == analysis_id)
-    result = await db.exec(stmt)
+    stm = select(Analysis).where(Analysis.id == analysis_id)
+    if options is not None:
+        stm = stm.options(*options)
+
+    result = await db.exec(stm)
     return result.first()
 
 
@@ -169,12 +172,12 @@ async def get_distinct_document_types_repo(
     db: DBSession,
 ) -> Sequence[str]:
     """Get distinct document types for the user for filter dropdown."""
-    stmt = (
+    stm = (
         select(Analysis.document_type)
         .where(Analysis.user_id == user_id)
         .where(Analysis.document_type != "")
         .distinct()
         .order_by(Analysis.document_type)
     )
-    result = await db.exec(stmt)
+    result = await db.exec(stm)
     return result.all()
