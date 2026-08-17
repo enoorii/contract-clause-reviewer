@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     LLM_MODEL_NAME: str = Field(default="gpt-5.6-luna")
 
+    # Files
+    REPORTS_DIR: Path = PROJECT_ROOT / "reports"
+
     @computed_field
     @property
     def ASYNC_DATABASE_URL(self) -> str:

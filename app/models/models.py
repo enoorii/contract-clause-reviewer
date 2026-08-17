@@ -75,6 +75,14 @@ class Analysis(TimeStampMixin, SQLModel, table=True):
     overall_risk_score: int = Field(default=0)
     recommendations: List[str] = Field(default=[], sa_column=Column(JSON))
 
+    # Report generation
+    report_stored: bool = Field(default=False)
+    report_path: str | None = Field(default=None, nullable=True)
+    report_generated_at: datetime = Field(
+        default=None, sa_column=Column(DateTime(timezone=True))
+    )
+    report_task_id: str = Field(default=None, max_length=255, index=True)
+
     # Relationships
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     user: "User" = Relationship(back_populates="analyses")

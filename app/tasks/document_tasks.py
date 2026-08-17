@@ -1,4 +1,4 @@
-# app/tasks/document_tasks.py (improved with proper async handling)
+# app/tasks/document_tasks.py
 
 import asyncio
 import logging

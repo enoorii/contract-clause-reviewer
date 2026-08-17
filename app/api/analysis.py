@@ -31,7 +31,6 @@ async def analyze_document(
     *,
     user: ActiveUser,
     analysis_data: AnalysisCreate,
-    db: DBSession,
     request: Request,
 ):
     """Queue document analysis as Celery task."""

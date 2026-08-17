@@ -181,3 +181,11 @@ async def get_distinct_document_types_repo(
     )
     result = await db.exec(stm)
     return result.all()
+
+
+async def get_analysis_by_report_task_id(
+    task_id: str, db: DBSession
+) -> Analysis | None:
+    stmt = select(Analysis).where(Analysis.report_task_id == task_id)
+    result = await db.exec(stmt)
+    return result.one_or_none()

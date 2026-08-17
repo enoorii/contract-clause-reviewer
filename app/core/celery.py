@@ -32,10 +32,29 @@ celery_app.conf.update(
 # Periodic tasks (Beat schedule)
 celery_app.conf.beat_schedule = {
     "cleanup_expired_tokens_daily": {
-        "task": "cleanup_expired_refresh_tokens",  # Must match task name
+        "task": "cleanup_expired_refresh_tokens",
         "schedule": crontab(hour=0, minute=0),  # Run at midnight every day
         "options": {
             "expires": 3600,  # Task expires after 1 hour if not run
+        },
+    },
+    "cleanup_old_reports_weekly": {
+        "task": "cleanup_old_report_files",
+        "schedule": crontab(
+            hour=2, minute=0, day_of_week=0
+        ),  # Run at 2 AM every Sunday
+        "kwargs": {
+            "days_to_keep": 30  # Keep reports for 30 days
+        },
+        "options": {
+            "expires": 7200,  # Task expires after 2 hours if not run
+        },
+    },
+    "cleanup_orphaned_references_daily": {
+        "task": "cleanup_orphaned_report_references",
+        "schedule": crontab(hour=3, minute=0),  # Run at 3 AM daily
+        "options": {
+            "expires": 3600,
         },
     },
 }

@@ -164,7 +164,7 @@ async def get_user_analyses(
     user_id: UUID,
     db: DBSession,
     filters: AnalysisFilters,
-) -> dict:
+):
     """
     Get analyses for a user with filtering, sorting, and pagination.
     Returns a paginated response dict.
