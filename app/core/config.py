@@ -14,14 +14,18 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: str = "5432"
 
-    # Redis=
+    # Redis
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str | None = None
 
     BRUTE_FORCE_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_GLOBAL_MAX: int = 1000
     MAX_FAILED_ATTEMPTS: int = 20
     REDIS_MAX_CONNECTIONS: int = 5
+
+    REDIS_SOCKET_TIMEOUT: int = 5
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
 
     # Dev Mode
     DEV_MODE: bool = False
@@ -50,7 +54,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def SYNC_DATABASE_URL(self) -> str:
-        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # just using db0 as a best practice
     @computed_field

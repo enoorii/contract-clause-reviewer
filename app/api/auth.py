@@ -9,10 +9,15 @@ from fastapi.security import (
 )
 from pwdlib.exceptions import UnknownHashError
 
-from app.api.deps import AdminUser, CurrrentUser
+from app.api.deps import CurrrentUser
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
+from app.infrastructure.redis.dependencies import (
+    AdminRateLimit,
+    LoginRateLimit,
+    PublicRateLimit,
+)
 from app.schemas.base import ClientInfo
 from app.schemas.users import RefreshTokenRequest, Token, UserCreate
 from app.services.auth import (
@@ -49,6 +54,7 @@ async def login(
     user_data: Annotated[UserCreate, Body()],
     db: DBSession,
     request: Request,
+    limiter: LoginRateLimit,
 ):
     """
     Login user with username and password.
@@ -117,6 +123,7 @@ async def login_oauth(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DBSession,
     request: Request,
+    limiter: PublicRateLimit,
 ):
     """
     Login user with OAuth2 password flow.
@@ -254,6 +261,7 @@ async def logout(
     request_data: RefreshTokenRequest,
     db: DBSession,
     request: Request,
+    limiter: PublicRateLimit,
 ):
     """
     Logout user by revoking their refresh token.
@@ -335,10 +343,11 @@ async def logout(
 
 @router.post("/sessions/expire/{user_id}")
 async def expire_user_sessions(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     user_id: UUID,
     db: DBSession,
     request: Request,
+    limiter: PublicRateLimit,
 ):
     """
     Expire all sessions for a user (Admin only).

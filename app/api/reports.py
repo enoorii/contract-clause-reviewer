@@ -3,8 +3,9 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse
 
-from app.api.deps import ActiveUser, DBSession
+from app.api.deps import DBSession
 from app.infrastructure.logging import get_logger
+from app.infrastructure.redis.dependencies import ActiveUserAnalysisRateLimit
 from app.repositories.analysis_repositories import get_analysis_by_report_task_id
 from app.schemas.report import ReportStatusResponse
 from app.services.analysis import get_analysis_detail
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 @router.post("/{analysis_id}", response_model=dict)
 async def generate_report(
     analysis_id: int,
-    user: ActiveUser,
+    user: ActiveUserAnalysisRateLimit,
     db: DBSession,
     request: Request,
 ):
@@ -73,7 +74,7 @@ async def generate_report(
 @router.get("/status/{task_id}")
 async def get_report_status(
     task_id: str,
-    user: ActiveUser,
+    user: ActiveUserAnalysisRateLimit,
     db: DBSession,
 ):
     """
@@ -128,7 +129,7 @@ async def get_report_status(
 @router.get("/download/{analysis_id}")
 async def download_report(
     analysis_id: int,
-    user: ActiveUser,
+    user: ActiveUserAnalysisRateLimit,
     db: DBSession,
 ):
     """

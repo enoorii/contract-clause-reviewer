@@ -4,10 +4,13 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-from app.api.deps import ActiveUser
 from app.core.filters.analysis import AnalysisFilters
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
+from app.infrastructure.redis.dependencies import (
+    ActiveUserAnalysisRateLimit,
+    PublicRateLimit,
+)
 from app.schemas.analysis import (
     AnalysisCreate,
     AnalysisDetailedResponse,
@@ -29,7 +32,7 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.post("/analyze", response_model=dict)
 async def analyze_document(
     *,
-    user: ActiveUser,
+    user: ActiveUserAnalysisRateLimit,
     analysis_data: AnalysisCreate,
     request: Request,
 ):
@@ -73,9 +76,7 @@ async def analyze_document(
 
 @router.get("/analyze/{task_id}/status", response_model=AnalysisStatusResponse)
 async def get_analysis_status(
-    task_id: str,
-    db: DBSession,
-    request: Request,
+    task_id: str, db: DBSession, request: Request, limiter: PublicRateLimit
 ):
     """Get status of analysis task and retrieve result when completed."""
     client_ip = request.client.host if request.client else None
@@ -121,7 +122,9 @@ async def get_analysis_status(
 
 @router.get("/", response_model=list[AnalysisSummaryResponse])
 async def list_analyses(
-    user: ActiveUser, db: DBSession, filters: Annotated[AnalysisFilters, Query()]
+    user: ActiveUserAnalysisRateLimit,
+    db: DBSession,
+    filters: Annotated[AnalysisFilters, Query()],
 ):
     """List all analyses for the current user."""
     result = await get_user_analyses(user_id=user.id, db=db, filters=filters)
@@ -131,7 +134,7 @@ async def list_analyses(
 @router.get("/{analysis_id}", response_model=AnalysisDetailedResponse)
 async def get_analysis(
     analysis_id: int,
-    user: ActiveUser,
+    user: ActiveUserAnalysisRateLimit,
     db: DBSession,
 ):
     """Get detailed analysis by ID (only if owned by current user)."""

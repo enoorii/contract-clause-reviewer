@@ -246,6 +246,7 @@ class TestVerifyAccessToken:
 
 class TestVerifyRefreshToken:
     @pytest.mark.asyncio
+    @freeze_time(fixed_now._fixture_function())
     async def test_valid_token_returns_verified_data(
         self, mock_token_store, valid_refresh_token_data, valid_refresh_token_string
     ):
@@ -310,6 +311,7 @@ class TestVerifyRefreshToken:
 
 
 class TestRotateRefreshToken:
+    @freeze_time(fixed_now._fixture_function())
     @pytest.mark.asyncio
     async def test_successful_rotation_returns_new_tokens(
         self,
@@ -354,6 +356,7 @@ class TestRotateRefreshToken:
         # Preserved expiry
         assert new_token_data.expires_at == valid_refresh_token_data.expires_at
 
+    @freeze_time(fixed_now._fixture_function())
     @pytest.mark.asyncio
     async def test_rotation_preserves_ip_and_user_agent_if_not_provided(
         self,
@@ -379,6 +382,7 @@ class TestRotateRefreshToken:
         assert stored.created_ip == "10.0.0.1"
         assert stored.user_agent == "Firefox"
 
+    @freeze_time(fixed_now._fixture_function())
     @pytest.mark.asyncio
     async def test_rotation_overrides_ip_and_user_agent_when_provided(
         self,
@@ -404,6 +408,7 @@ class TestRotateRefreshToken:
         assert stored.created_ip == "192.168.1.1"
         assert stored.user_agent == "Chrome"
 
+    @freeze_time(fixed_now._fixture_function())
     @pytest.mark.asyncio
     async def test_rotation_user_not_found_raises(
         self,

@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import JSON, DateTime
 from sqlmodel import Column, Field, Relationship, SQLModel, Text, func
+from typing_extensions import Optional
 
 from app.core.enums import RiskLevel, Role
 
@@ -42,7 +42,7 @@ class User(TimeStampMixin, SQLModel, table=True):
     )
     is_active: bool = Field(default=True)
 
-    created_by: Optional[UUID] = Field(foreign_key="users.id", default=None)
+    created_by: UUID | None = Field(foreign_key="users.id", default=None)
     creator: Optional["User"] = Relationship(
         sa_relationship_kwargs={"remote_side": "User.id"}
     )
@@ -73,7 +73,7 @@ class Analysis(TimeStampMixin, SQLModel, table=True):
     document_summary: str = Field(default="", sa_column=Column(Text))
     document_type: str = Field(default="", max_length=100)
     overall_risk_score: int = Field(default=0)
-    recommendations: List[str] = Field(default=[], sa_column=Column(JSON))
+    recommendations: list[str] = Field(default=[], sa_column=Column(JSON))
 
     # Report generation
     report_stored: bool = Field(default=False)
@@ -87,19 +87,19 @@ class Analysis(TimeStampMixin, SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     user: "User" = Relationship(back_populates="analyses")
 
-    clauses: List["Clause"] = Relationship(
+    clauses: list["Clause"] = Relationship(
         back_populates="analysis", cascade_delete=True, passive_deletes=True
     )
 
 
 class Clause(SQLModel, table=True):
-    id: Optional[int] = Field(primary_key=True, default=None)
+    id: int | None = Field(primary_key=True, default=None)
 
     clause_type: str = Field(max_length=100)
     summary: str = Field(sa_column=Column(Text))
     risk_level: RiskLevel = Field(default=RiskLevel.AVERAGE)
-    key_terms: List[str] = Field(default=[], sa_column=Column(JSON))
-    suggested_actions: List[str] = Field(default=[], sa_column=Column(JSON))
+    key_terms: list[str] = Field(default=[], sa_column=Column(JSON))
+    suggested_actions: list[str] = Field(default=[], sa_column=Column(JSON))
 
     analysis_id: int = Field(foreign_key="analysis.id", ondelete="CASCADE")
     analysis: "Analysis" = Relationship(back_populates="clauses")
@@ -117,20 +117,20 @@ class RefreshToken(TimeStampMixin, SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
-    last_used_at: Optional[datetime] = Field(
+    last_used_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
     )
 
     # IP Tracking
-    created_ip: Optional[str] = Field(default=None, max_length=45)  # IPv6 max length
-    last_used_ip: Optional[str] = Field(default=None, max_length=45)
+    created_ip: str | None = Field(default=None, max_length=45)  # IPv6 max length
+    last_used_ip: str | None = Field(default=None, max_length=45)
 
     # Device Tracking
-    user_agent: Optional[str] = Field(default=None, max_length=512)
+    user_agent: str | None = Field(default=None, max_length=512)
 
     # Relationships
-    user_id: Optional[UUID] = Field(
+    user_id: UUID | None = Field(
         foreign_key="users.id", ondelete="CASCADE", index=True
     )
     user: "User" = Relationship(back_populates="refresh_tokens")

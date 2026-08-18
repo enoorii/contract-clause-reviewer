@@ -4,11 +4,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
-
-from app.api.deps import ActiveUser, AdminUser, CurrrentUser
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
+from app.infrastructure.redis.dependencies import ActiveUserRateLimit, AdminRateLimit, UserRateLimit
 from app.schemas.base import PaginatedResponse
 from app.schemas.users import (
     PasswordChange,
@@ -38,7 +37,7 @@ router = APIRouter(prefix="/users")
 
 @router.get("/me", response_model=UserDetailedResponse)
 async def get_profile(
-    user: CurrrentUser,
+    user: UserRateLimit,
     db: DBSession,
     request: Request,
 ):
@@ -118,7 +117,7 @@ async def get_profile(
 
 @router.patch("/me", response_model=UserDetailedResponse)
 async def update_profile(
-    user: ActiveUser,
+    user: ActiveUserRateLimit,
     new_username: str,
     db: DBSession,
     request: Request,
@@ -217,7 +216,7 @@ async def update_profile(
 
 @router.patch("/me/password", response_model=UserResponse)
 async def change_own_password(
-    user: CurrrentUser,
+    user: UserRateLimit,
     password_data: PasswordChange,
     db: DBSession,
     request: Request,
@@ -312,7 +311,7 @@ async def change_own_password(
 
 @router.post("", response_model=UserResponse)
 async def create_user(
-    user_data: UserCreate, admin: AdminUser, db: DBSession, request: Request
+    user_data: UserCreate, admin: AdminRateLimit, db: DBSession, request: Request
 ):
     """
     Create a new user (Admin only).
@@ -414,7 +413,7 @@ async def create_user(
 
 @router.get("", response_model=PaginatedResponse[UserResponse])
 async def get_users_list(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     db: DBSession,
     filters: Annotated[UserFilters, Query()],
     request: Request,
@@ -508,7 +507,7 @@ async def get_users_list(
 
 @router.get("/{user_id}", response_model=UserDetailedResponse)
 async def get_user(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     user_id: UUID,
     db: DBSession,
     request: Request,
@@ -611,7 +610,7 @@ async def get_user(
 
 @router.patch("/{user_id}", response_model=UserDetailedResponse)
 async def update_user(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     user_id: UUID,
     user_data: UserUpdate,
     db: DBSession,
@@ -797,7 +796,7 @@ async def update_user(
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     user_id: UUID,
     db: DBSession,
     request: Request,
@@ -963,7 +962,7 @@ async def delete_user(
 
 @router.post("/{user_id}/password", response_model=UserResponse)
 async def change_password(
-    admin: AdminUser,
+    admin: AdminRateLimit,
     user_id: UUID,
     password_data: PasswordChange,
     db: DBSession,

@@ -1,6 +1,7 @@
 # tests/integration/api/test_auth_api.py
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -17,7 +18,8 @@ from app.core.security import (
 )
 from app.db.database import get_db
 from app.main import app
-from app.models.models import Analysis, RefreshToken, Risk, User
+from app.models.models import *  # noqa
+from app.models.models import RefreshToken, User
 from app.services.auth import DatabaseTokenStore
 
 # ---------- Password Fixtures ----------
@@ -27,6 +29,25 @@ from app.services.auth import DatabaseTokenStore
 def strong_password() -> str:
     """Return a password that meets the StrongPassword requirements."""
     return "Test@123456"
+
+
+# ---------- Redis Bypass ----------
+@pytest.fixture(autouse=True)
+def bypass_rate_limiting():
+    """Automatically bypass all rate limiters for all tests."""
+    with patch(
+        "app.infrastructure.redis.dependencies.check_rate_limit",
+        new=AsyncMock(
+            return_value={
+                "limit": 999,
+                "remaining": 998,
+                "reset": 1234567890,
+                "window": 60,
+                "current_usage": 1,
+            }
+        ),
+    ):
+        yield
 
 
 # ---------- Database Fixtures ----------
@@ -40,7 +61,7 @@ async def client(pglite_async_session):
     original_overrides = app.dependency_overrides.copy()
 
     async def override_get_db():
-        return pglite_async_session
+        yield pglite_async_session
 
     app.dependency_overrides[get_db] = override_get_db
 
