@@ -1,8 +1,8 @@
-"""empty message
+"""reset db
 
-Revision ID: dc369963f937
+Revision ID: 8e84f9bc4263
 Revises: 
-Create Date: 2026-08-21 03:49:39.297218
+Create Date: 2026-08-21 09:07:44.617681
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel.sql.sqltypes
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'dc369963f937'
+revision: str = '8e84f9bc4263'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -51,7 +51,7 @@ def upgrade() -> None:
     sa.Column('report_stored', sa.Boolean(), nullable=False),
     sa.Column('report_path', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('report_generated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('report_task_id', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=False),
+    sa.Column('report_task_id', sqlmodel.sql.sqltypes.AutoString(length=255), nullable=True),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -81,7 +81,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('clause_type', sqlmodel.sql.sqltypes.AutoString(length=100), nullable=False),
     sa.Column('summary', sa.Text(), nullable=True),
-    sa.Column('risk_level', sa.Enum('LOW', 'AVERAGE', 'HIGH', 'CRITICAL', name='risklevel'), nullable=False),
+    sa.Column('risk_level', sa.Enum('LOW', 'AVERAGE', 'HIGH', 'CRITICAL', name='risklevel'), nullable=True),
     sa.Column('key_terms', sa.JSON(), nullable=True),
     sa.Column('suggested_actions', sa.JSON(), nullable=True),
     sa.Column('analysis_id', sa.Integer(), nullable=False),

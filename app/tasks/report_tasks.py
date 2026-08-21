@@ -1,5 +1,7 @@
+# app/tasks/report_tasks.py (updated)
+
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Dict
 
@@ -8,7 +10,9 @@ from weasyprint import HTML
 
 from app.core.celery import celery_app
 from app.core.config import PROJECT_ROOT, setting
-from app.services.reports import generate_report_html
+from app.db.database import get_sync_db
+from app.models.models import Analysis
+from app.services.report_generator import generate_report_html
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +33,8 @@ def create_report_pdf(
     analysis_data: Dict[str, Any],
 ) -> dict:
     """
-    Generate PDF report from analysis data and save to disk immediately.
-    Returns dict with file_path and analysis_id.
+    Generate PDF report from analysis data, save to disk, and update DB.
+    Uses a fixed filename: report_{analysis_id}.pdf (overwrites previous).
     """
     try:
         analysis_id = analysis_data.get("id")
@@ -45,9 +49,9 @@ def create_report_pdf(
         html_content = generate_report_html(analysis_data)
         pdf_bytes = HTML(string=html_content).write_pdf()
         if pdf_bytes is None:
-            raise ValueError("Invalid analysis")
+            raise ValueError("PDF generation returned None")
 
-        # Save to disk immediately
+        # Determine reports directory
         reports_dir = (
             Path(setting.REPORTS_DIR)
             if hasattr(setting, "REPORTS_DIR")
@@ -55,21 +59,44 @@ def create_report_pdf(
         )
         reports_dir.mkdir(parents=True, exist_ok=True)
 
-        # Use task_id in filename for uniqueness, but analysis_id for readability
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"report_{analysis_id}_{timestamp}.pdf"
+        # Use fixed filename (overwrites previous)
+        filename = f"report_{analysis_id}.pdf"
         file_path = reports_dir / filename
 
-        # Synchronous write (Celery is sync)
+        # Write PDF synchronously
         with open(file_path, "wb") as f:
             f.write(pdf_bytes)
 
         logger.info(
-            "Report PDF generated and saved for analysis %d at %s (size: %d bytes)",
+            "PDF written for analysis %d at %s (%d bytes)",
             analysis_id,
             file_path,
             len(pdf_bytes),
         )
+
+        # --- Update database ---
+        with get_sync_db() as session:
+            analysis = (
+                session.query(Analysis).filter(Analysis.id == analysis_id).first()
+            )
+            if not analysis:
+                error_msg = f"Analysis {analysis_id} not found in DB"
+                logger.error(error_msg)
+                return {
+                    "analysis_id": analysis_id,
+                    "task_id": self.request.id,
+                    "status": "failed",
+                    "error": error_msg,
+                }
+
+            # Update report fields
+            analysis.report_stored = True
+            analysis.report_path = str(file_path)
+            analysis.report_generated_at = datetime.now(UTC)
+            session.commit()
+            logger.info(
+                "Successfully updated analysis %d with report path", analysis_id
+            )
 
         return {
             "analysis_id": analysis_id,

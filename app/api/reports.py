@@ -10,7 +10,7 @@ from app.repositories.analysis_repositories import get_analysis_by_report_task_i
 from app.schemas.report import ReportStatusResponse
 from app.services.analysis import get_analysis_detail
 from app.services.reports import (
-    get_report_status_and_save_result,
+    get_report_status,
     queue_report_generation,
 )
 
@@ -72,16 +72,16 @@ async def generate_report(
 
 
 @router.get("/status/{task_id}")
-async def get_report_status(
+async def get_report_status_endpoint(
     task_id: str,
     user: ActiveUserAnalysisRateLimit,
     db: DBSession,
 ):
     """
     Check status of report generation task.
-    The task saves the PDF to disk immediately upon completion.
+    The task saves the PDF and updates the DB upon completion.
     """
-    # Verify ownership
+    # Verify ownership by finding analysis with this report_task_id
     analysis = await get_analysis_by_report_task_id(task_id, db)
     if not analysis:
         raise HTTPException(
@@ -94,8 +94,8 @@ async def get_report_status(
             detail="Not authorized",
         )
 
-    # Get status (will update DB if completed)
-    status_result = await get_report_status_and_save_result(task_id=task_id, db=db)
+    # Get status (no DB update)
+    status_result = await get_report_status(task_id=task_id, db=db)
 
     if status_result["status"] in ("pending", "processing"):
         return ReportStatusResponse(
@@ -119,6 +119,7 @@ async def get_report_status(
             error="Report file not found",
         )
 
+    # Return the file directly (no download URL)
     return FileResponse(
         file_path,
         media_type="application/pdf",

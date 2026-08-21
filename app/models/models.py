@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime
+from sqlalchemy import JSON, DateTime, Enum
 from sqlmodel import Column, Field, Relationship, SQLModel, Text, func
 from typing_extensions import Optional
 
@@ -81,7 +81,9 @@ class Analysis(TimeStampMixin, SQLModel, table=True):
     report_generated_at: datetime = Field(
         default=None, sa_column=Column(DateTime(timezone=True))
     )
-    report_task_id: str = Field(default=None, max_length=255, index=True)
+    report_task_id: str | None = Field(
+        default=None, max_length=255, index=True, nullable=True
+    )
 
     # Relationships
     user_id: UUID = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
@@ -97,7 +99,9 @@ class Clause(SQLModel, table=True):
 
     clause_type: str = Field(max_length=100)
     summary: str = Field(sa_column=Column(Text))
-    risk_level: RiskLevel = Field(default=RiskLevel.AVERAGE)
+    risk_level: RiskLevel = Field(
+        default=RiskLevel.AVERAGE, sa_column=Column(Enum(RiskLevel, create_type=True))
+    )
     key_terms: list[str] = Field(default=[], sa_column=Column(JSON))
     suggested_actions: list[str] = Field(default=[], sa_column=Column(JSON))
 
@@ -130,9 +134,7 @@ class RefreshToken(TimeStampMixin, SQLModel, table=True):
     user_agent: str | None = Field(default=None, max_length=512)
 
     # Relationships
-    user_id: UUID | None = Field(
-        foreign_key="users.id", ondelete="CASCADE", index=True
-    )
+    user_id: UUID | None = Field(foreign_key="users.id", ondelete="CASCADE", index=True)
     user: "User" = Relationship(back_populates="refresh_tokens")
 
 
