@@ -1,0 +1,52 @@
+services:
+  test-db:
+    image: postgres:18-alpine
+    container_name: contract_clause_test_db
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_db
+    ports:
+      - "5433:5432" # Different port to avoid conflicts
+    networks:
+      - test_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  test-redis:
+    image: redis:6-alpine
+    container_name: contract_clause_test_redis
+    ports:
+      - "6380:6379" # Different port to avoid conflicts
+    networks:
+      - test_network
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # NEW: RedisInsight for monitoring
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: contract_clause_redisinsight
+    ports:
+      - "5540:5540" # Web UI port (redis://test-redis:6379 to access redis)
+    volumes:
+      - redisinsight-data:/db # Persist your dashboard settings
+    networks:
+      - test_network
+    restart: unless-stopped
+
+networks:
+  test_network:
+    driver: bridge
+
+# NEW: Volume for RedisInsight data persistence
+volumes:
+  redisinsight-data:

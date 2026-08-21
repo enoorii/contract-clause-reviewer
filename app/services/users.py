@@ -101,7 +101,11 @@ async def get_users(db: DBSession, filters: UserFilters) -> dict:
 async def get_user_by_id(user_id: UUID, db: DBSession):
     """Get a single user by ID."""
     try:
-        user = await get_user_by_id_repo(user_id=user_id, db=db)
+        user = await get_user_by_id_repo(
+            user_id=user_id,
+            db=db,
+            options=[selectinload(cast(InstrumentedAttribute, User.analyses))],
+        )
     except (NoResultFound, MultipleResultsFound):
         raise AuthenticationError("Invalid credentials")
     return user
@@ -111,7 +115,11 @@ async def update_user_by_id(user_id: UUID, user_data: UserUpdate, db: DBSession)
     """Update an existing user."""
     update_data = user_data.model_dump(exclude_unset=True)
     try:
-        user = await get_user_by_id_repo(user_id=user_id, db=db)
+        user = await get_user_by_id_repo(
+            user_id=user_id,
+            db=db,
+            options=[selectinload(cast(InstrumentedAttribute, User.analyses))],
+        )
     except (NoResultFound, MultipleResultsFound):
         raise AuthenticationError("Invalid credentials")
 

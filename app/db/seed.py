@@ -20,6 +20,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
 
     if existing_admin:
         # Don't update existing admin
+        print("admin exists")
         return False
 
     # Create admin
@@ -32,6 +33,7 @@ async def seed_admin_user(db: AsyncSession) -> bool:
     )
 
     db.add(admin)
+    await db.commit()
 
     # Log the creation (important for security!)
     print(f"✅ Admin user created: {setting.ADMIN_USERNAME}")

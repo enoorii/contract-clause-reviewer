@@ -1,3 +1,4 @@
+from os import getenv
 from pathlib import Path
 
 from pydantic import Field, computed_field
@@ -8,9 +9,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 class Settings(BaseSettings):
     # Database
-    POSTGRES_USER: str = "todo"
-    POSTGRES_PASSWORD: str = "todopass"
-    POSTGRES_DB: str = "todo"
+    POSTGRES_USER: str = "user"
+    POSTGRES_PASSWORD: str = "password"
+    POSTGRES_DB: str = "db"
     POSTGRES_HOST: str = "db"
     POSTGRES_PORT: str = "5432"
 
@@ -41,7 +42,7 @@ class Settings(BaseSettings):
     # OpenAI Config
     OPENAI_BASE_URL: str = ""
     OPENAI_API_KEY: str = ""
-    LLM_MODEL_NAME: str = Field(default="gpt-5.6-luna")
+    LLM_MODEL_NAME: str = "gpt-5.6-luna"
 
     # Files
     REPORTS_DIR: Path = PROJECT_ROOT / "reports"
@@ -79,7 +80,7 @@ class Settings(BaseSettings):
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
     model_config = SettingsConfigDict(
-        env_file=str(PROJECT_ROOT / ".env"),
+        env_file=str(PROJECT_ROOT / getenv("ENV_FILE", ".env")),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

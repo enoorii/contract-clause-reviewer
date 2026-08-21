@@ -80,6 +80,11 @@ class UserCreate(BaseModel):
     role: Role = Field(default=Role.USER)
 
 
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
 class UserUpdate(BaseModel):
     username: str = Field(min_length=3)
     role: Role | None = Field(default=None)

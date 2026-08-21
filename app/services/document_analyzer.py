@@ -136,7 +136,6 @@ class LegalDocumentAnalyzer:
                         "strict": True,
                     },
                 },
-                **kwargs,
             )
 
             response_content = response.choices[0].message.content

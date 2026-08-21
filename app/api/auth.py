@@ -19,7 +19,7 @@ from app.infrastructure.redis.dependencies import (
     PublicRateLimit,
 )
 from app.schemas.base import ClientInfo
-from app.schemas.users import RefreshTokenRequest, Token, UserCreate
+from app.schemas.users import RefreshTokenRequest, Token, UserLogin
 from app.services.auth import (
     authenticate_user,
     logout_user,
@@ -51,7 +51,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 @router.post("/login", response_model=Token)
 async def login(
-    user_data: Annotated[UserCreate, Body()],
+    user_data: Annotated[UserLogin, Body()],
     db: DBSession,
     request: Request,
     limiter: LoginRateLimit,
@@ -131,6 +131,9 @@ async def login_oauth(
     client_ip = request.client.host if request.client else None
     user_agent = request.headers.get("user-agent")
     username = form_data.username
+
+    print(username)
+    print(form_data.password)
 
     logger.info(
         "OAuth login attempt for user: %s from IP: %s",

@@ -7,7 +7,11 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
-from app.infrastructure.redis.dependencies import ActiveUserRateLimit, AdminRateLimit, UserRateLimit
+from app.infrastructure.redis.dependencies import (
+    ActiveUserRateLimit,
+    AdminRateLimit,
+    UserRateLimit,
+)
 from app.schemas.base import PaginatedResponse
 from app.schemas.users import (
     PasswordChange,
@@ -491,7 +495,7 @@ async def get_users_list(
         "Admin %s (ID: %s) fetched %d users",
         admin.username,
         admin.id,
-        len(users["total"]),
+        users["total"],
     )
 
     logger.admin_action(
