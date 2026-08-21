@@ -7,6 +7,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.analysis import router as analysis_router
 from app.api.auth import router as auth_router
+from app.api.reports import router as reports_router
 from app.api.users import router as user_router
 from app.db.database import async_engine
 from app.db.seed import seed_admin_user
@@ -43,6 +44,7 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(user_router, prefix="/api/v1")
 app.include_router(analysis_router, prefix="/api/v1")
+app.include_router(reports_router, prefix="/api/v1")
 
 
 # Add health check endpoint

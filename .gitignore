@@ -29,3 +29,7 @@ todo.db-shm
 # Node
 node_modules/
 static/
+
+
+# files
+reports/*.pdf

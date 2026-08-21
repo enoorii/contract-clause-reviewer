@@ -9,6 +9,7 @@ celery_app = Celery(
     backend=setting.celery_backend_url,
     include=[
         "app.tasks.document_tasks",
+        "app.tasks.report_tasks",
         "app.tasks.cleanup_tasks",
     ],
 )
@@ -62,5 +63,6 @@ celery_app.conf.beat_schedule = {
 # Optional: Route tasks to different queues
 celery_app.conf.task_routes = {
     "analyze_legal_document": {"queue": "analysis"},
+    "create_report_pdf": {"queue": "analysis"},
     "cleanup_expired_refresh_tokens": {"queue": "cleanup"},
 }

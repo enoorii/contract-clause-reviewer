@@ -1,8 +1,9 @@
 # app/repositories/analysis_repository.py
 
-from typing import Sequence
+from typing import Sequence, cast
 from uuid import UUID
 
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import asc, col, desc, func, select
 
@@ -117,11 +118,12 @@ async def create_clauses_repo(
 
 
 async def get_analysis_by_task_id_repo(
-    task_id: str,
-    db: DBSession,
+    task_id: str, db: DBSession, options: list[ORMOption] | None = None
 ) -> Analysis | None:
     """Retrieve analysis by Celery task ID."""
     stm = select(Analysis).where(Analysis.task_id == task_id)
+    if options is not None:
+        stm = stm.options(*options)
     result = await db.exec(stm)
     return result.first()
 
@@ -186,6 +188,9 @@ async def get_distinct_document_types_repo(
 async def get_analysis_by_report_task_id(
     task_id: str, db: DBSession
 ) -> Analysis | None:
-    stmt = select(Analysis).where(Analysis.report_task_id == task_id)
+    options = [selectinload(cast(InstrumentedAttribute, Analysis.clauses))]
+
+    """Retrieve analysis by report_task_id."""
+    stmt = select(Analysis).where(Analysis.report_task_id == task_id).options(*options)
     result = await db.exec(stmt)
     return result.one_or_none()

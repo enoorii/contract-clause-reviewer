@@ -9,8 +9,9 @@ from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.dependencies import (
     ActiveUserAnalysisRateLimit,
-    PublicRateLimit,
+    ActiveUserRateLimit,
 )
+from app.repositories.analysis_repositories import get_analysis_by_task_id_repo
 from app.schemas.analysis import (
     AnalysisCreate,
     AnalysisDetailedResponse,
@@ -19,7 +20,7 @@ from app.schemas.analysis import (
 )
 from app.services.analysis import (
     get_analysis_detail,
-    get_analysis_status_and_save_result,
+    get_analysis_status,
     get_user_analyses,
     queue_analysis_task,
 )
@@ -74,50 +75,31 @@ async def analyze_document(
         )
 
 
-@router.get("/analyze/{task_id}/status", response_model=AnalysisStatusResponse)
-async def get_analysis_status(
-    task_id: str, db: DBSession, request: Request, limiter: PublicRateLimit
+@router.get("/status/{task_id}")
+async def get_analysis_status_endpoint(
+    task_id: str,
+    user: ActiveUserRateLimit,  # your authentication dependency
+    db: DBSession,
 ):
-    """Get status of analysis task and retrieve result when completed."""
-    client_ip = request.client.host if request.client else None
-    logger.debug("Status check for task %s from %s", task_id, client_ip)
+    # (Optional) Verify ownership – check if analysis belongs to user
+    analysis = await get_analysis_by_task_id_repo(task_id, db)
+    if analysis and analysis.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-    try:
-        status_str, analysis = await get_analysis_status_and_save_result(
-            task_id=task_id, db=db
-        )
+    status, analysis = await get_analysis_status(task_id, db)
 
-        if status_str in ("pending", "processing"):
-            return AnalysisStatusResponse(task_id=task_id, status=status_str)
-
-        if status_str == "failed":
-            return AnalysisStatusResponse(
-                task_id=task_id,
-                status="failed",
-                error="Analysis task failed",
-            )
-
-        # Completed
-        if analysis is None:
-            return AnalysisStatusResponse(
-                task_id=task_id,
-                status="failed",
-                error="No analysis found for this task",
-            )
-
-        detailed = AnalysisDetailedResponse.model_validate(analysis)
+    if status == "pending":
+        return {"status": "pending", "task_id": task_id}
+    elif status == "failed":
+        return {"status": "failed", "task_id": task_id, "error": "Task failed"}
+    elif status == "completed" and analysis:
         return AnalysisStatusResponse(
             task_id=task_id,
             status="completed",
-            analysis=detailed,
+            analysis=AnalysisDetailedResponse.model_validate(analysis),
         )
-
-    except Exception as e:
-        logger.error("Error checking status for task %s: %s", task_id, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get task status",
-        )
+    else:
+        return {"status": "unknown", "task_id": task_id}
 
 
 @router.get("/", response_model=list[AnalysisSummaryResponse])
