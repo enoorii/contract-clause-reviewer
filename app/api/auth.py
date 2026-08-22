@@ -3,10 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
-from fastapi.security import (
-    OAuth2PasswordBearer,
-    OAuth2PasswordRequestForm,
-)
+from fastapi.security import OAuth2PasswordRequestForm
 from pwdlib.exceptions import UnknownHashError
 
 from app.api.deps import CurrrentUser
@@ -30,13 +27,7 @@ from app.services.users import get_user_by_id
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/auth")
-
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login/oauth",
-    auto_error=False,
-)
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 # # This is not used in admin-only JWT flow.
@@ -118,7 +109,7 @@ async def login(
     return tokens
 
 
-@router.post("/login/oauth", response_model=Token)
+@router.post("/login/oauth", response_model=Token, include_in_schema=False)
 async def login_oauth(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DBSession,

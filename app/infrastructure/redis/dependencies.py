@@ -229,18 +229,24 @@ PublicRateLimit = Annotated[str, Depends(general_limiter)]
 # For login endpoints
 LoginRateLimit = Annotated[str, Depends(login_limiter)]
 
-# For endpoints with custom limits
-RateLimit50PerMinute = Annotated[dict, Depends(create_rate_limiter(50, 60))]
-RateLimit10PerMinute = Annotated[dict, Depends(create_rate_limiter(10, 60))]
-RateLimitPerUser = Annotated[
-    dict,
-    Depends(
-        create_rate_limiter(
-            max_requests=100,
-            window_seconds=60,
-            key_prefix="user_only",
-            include_user=True,
-            include_ip=False,
-        )
-    ),
-]
+
+# For endpoints with custom limits and testing
+async def rate_limit_10_per_minute(
+    request: Request,
+    redis: RDClient,
+) -> str:
+    """Rate limiter for public endpoints (by IP only)"""
+    client_ip = request.client.host if request.client else "unknown"
+    key = f"test:{client_ip}"
+
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=10,
+        window_seconds=60,
+    )
+    return "ok"
+
+
+RateLimit10PerMinute = Annotated[str, Depends(rate_limit_10_per_minute)]

@@ -5,7 +5,7 @@ from uuid import UUID
 
 import jwt
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from sqlalchemy.exc import NoResultFound
@@ -28,24 +28,14 @@ class AuthUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-security = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login/oauth")
 
 
 async def get_current_user(
     db: DBSession,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    token: Annotated[str, Depends(oauth2_scheme)],
 ) -> AuthUser:
-    """Main authentication dependency. Handles both API key and JWT."""
-
-    token = credentials.credentials
-
-    # JWT token must be present
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    """Main authentication dependency. Uses JWT."""
 
     # Verify JWT access token
     try:
