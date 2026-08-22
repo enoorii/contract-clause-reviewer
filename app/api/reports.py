@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse
+from starlette.responses import RedirectResponse
 
 from app.api.deps import DBSession
 from app.infrastructure.logging import get_logger
@@ -46,11 +47,11 @@ async def generate_report(
         and Path(analysis.report_path).exists()
     ):
         logger.info("Report already exists for analysis %d", analysis_id)
-        return {
-            "status": "already_generated",
-            "analysis_id": analysis_id,
-            "download_url": f"/api/v1/reports/download/{analysis_id}",
-        }
+        # Redirect to download endpoint
+        return RedirectResponse(
+            url=f"/api/v1/reports/download/{analysis_id}",
+            status_code=303,  # See Other - forces GET to the download endpoint
+        )
 
     # Queue new generation
     task_id = await queue_report_generation(
@@ -110,7 +111,7 @@ async def get_report_status_endpoint(
             error=status_result.get("error", "Report generation failed"),
         )
 
-    # Completed - return the file
+    # Completed - redirect to download endpoint
     file_path = status_result.get("file_path")
     if not file_path or not Path(file_path).exists():
         return ReportStatusResponse(
@@ -119,11 +120,10 @@ async def get_report_status_endpoint(
             error="Report file not found",
         )
 
-    # Return the file directly (no download URL)
-    return FileResponse(
-        file_path,
-        media_type="application/pdf",
-        filename=f"report_{analysis.id}.pdf",
+    # Redirect to download endpoint
+    return RedirectResponse(
+        url=f"/api/v1/reports/download/{analysis.id}",
+        status_code=303,  # See Other - forces GET to the download endpoint
     )
 
 

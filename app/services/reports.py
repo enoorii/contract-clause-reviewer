@@ -2,19 +2,17 @@
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
 from uuid import UUID
 
 from celery.result import AsyncResult
 from celery.states import FAILURE, PENDING, STARTED, SUCCESS
-from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from app.core.celery import celery_app
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
-from app.models.models import Analysis
 from app.repositories.analysis_repositories import (
     get_analysis_by_id_repo,
+    get_analysis_by_report_task_id_repo,
 )
 from app.services.analysis import get_analysis_detail
 from app.tasks.report_tasks import create_report_pdf
@@ -83,6 +81,25 @@ async def get_report_status(
     Check Celery task status and retrieve analysis from DB if completed.
     If task is SUCCESS but DB not updated (e.g., due to a race), we update it now.
     """
+    # Retrieve analysis from DB (with clauses)
+    analysis = await get_analysis_by_report_task_id_repo(
+        task_id,
+        db,
+    )
+    if not analysis:
+        logger.error("Analysis not found for task %s", task_id)
+        return {"status": "failed", "error": "Analysis not found"}
+
+    # If the task is already finished return it
+    if analysis.report_stored and analysis.report_path:
+        file_path = Path(analysis.report_path)
+        if file_path.exists():
+            return {
+                "status": "completed",
+                "file_path": str(file_path),
+                "analysis_id": analysis.id,
+            }
+
     task = AsyncResult(task_id, app=celery_app)
     state = task.state
 
@@ -115,7 +132,6 @@ async def get_report_status(
         analysis = await get_analysis_by_id_repo(
             analysis_id,
             db,
-            options=[selectinload(cast(InstrumentedAttribute, Analysis.clauses))],
         )
         if not analysis:
             logger.error("Analysis %d not found for task %s", analysis_id, task_id)

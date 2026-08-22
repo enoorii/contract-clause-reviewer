@@ -128,6 +128,17 @@ async def get_analysis_by_task_id_repo(
     return result.first()
 
 
+async def get_analysis_by_report_task_id_repo(
+    task_id: str, db: DBSession, options: list[ORMOption] | None = None
+) -> Analysis | None:
+    """Retrieve analysis by Celery report task ID."""
+    stm = select(Analysis).where(Analysis.report_task_id == task_id)
+    if options is not None:
+        stm = stm.options(*options)
+    result = await db.exec(stm)
+    return result.first()
+
+
 async def get_analysis_by_id_repo(
     analysis_id: int, db: DBSession, options: list[ORMOption] | None = None
 ) -> Analysis | None:
@@ -194,3 +205,8 @@ async def get_analysis_by_report_task_id(
     stmt = select(Analysis).where(Analysis.report_task_id == task_id).options(*options)
     result = await db.exec(stmt)
     return result.one_or_none()
+
+
+async def delete_analysis_by_id_repo(analysis_id: int, db: DBSession):
+    analysis = await get_analysis_by_id_repo(analysis_id=analysis_id, db=db)
+    await db.delete(instance=analysis)

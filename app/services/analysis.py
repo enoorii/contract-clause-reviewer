@@ -12,6 +12,7 @@ from app.core.exceptions import OutOfRange
 from app.core.filters.analysis import AnalysisFilters
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
+from app.infrastructure.storage import delete_file_async
 from app.models.models import Analysis
 from app.repositories.analysis_repositories import (
     get_analysis_by_id_repo,
@@ -123,3 +124,39 @@ async def get_analysis_detail(
         db,
         options=[selectinload(cast(InstrumentedAttribute, Analysis.clauses))],
     )
+
+
+async def delete_analysis_by_id(
+    analysis_id: int,
+    db: DBSession,
+) -> bool:
+    """
+    Delete analysis and its associated resources.
+
+    Args:
+        analysis_id: ID of the analysis to delete
+        db: Database session
+
+    Returns:
+        bool: True if analysis was deleted, False if not found
+
+    Note:
+        - Clauses are cascade-deleted by the database (passive_deletes=True)
+        - Report file is deleted asynchronously before DB deletion
+        - If file deletion fails, DB deletion still proceeds (fail-soft approach)
+    """
+    # Fetch the analysis
+    analysis = await get_analysis_by_id_repo(analysis_id=analysis_id, db=db)
+
+    if not analysis:
+        return False
+
+    # Clean up report file
+    if analysis.report_stored and analysis.report_path:
+        await delete_file_async(analysis.report_path)
+
+    # Delete the analysis - database will cascade delete clauses
+    await db.delete(analysis)
+
+    logger.info(f"Successfully deleted analysis {analysis_id}")
+    return True

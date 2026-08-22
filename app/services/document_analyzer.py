@@ -1,11 +1,11 @@
 import json
-import re
 from typing import Optional
 
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 
 from app.core.config import setting
+from app.core.utilities import extract_json_from_string
 from app.infrastructure.logging import get_logger
 from app.infrastructure.openai.schemas import LegalDocumentAnalysis
 
@@ -82,24 +82,6 @@ Provide a comprehensive analysis covering all key clauses, risks, and recommenda
 Ensure your analysis is structured and actionable.
 """
 
-    def _extract_json_from_response(self, content: str) -> str:
-        """
-        Extract JSON from the response content.
-        Handles markdown code blocks and plain JSON.
-        """
-        # Try to find JSON in markdown code blocks
-        json_match = re.search(r"```json\s*(\{.*?\})\s*```", content, re.DOTALL)
-        if json_match:
-            return json_match.group(1)
-
-        # Try to find JSON object directly (greedy but safe)
-        json_match = re.search(r"\{.*\}", content, re.DOTALL)
-        if json_match:
-            return json_match.group(0)
-
-        # If no JSON found, return original content (will fail parsing)
-        return content
-
     async def analyze(
         self,
         document_text: str,
@@ -131,7 +113,7 @@ Ensure your analysis is structured and actionable.
                 raise ValueError("No response content from LLM provider")
 
             # Extract JSON from the response
-            json_str = self._extract_json_from_response(response_content)
+            json_str = extract_json_from_string(response_content)
 
             # Validate and parse with Pydantic
             validated_analysis = LegalDocumentAnalysis.model_validate_json(json_str)

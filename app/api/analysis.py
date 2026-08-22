@@ -19,6 +19,7 @@ from app.schemas.analysis import (
     AnalysisSummaryResponse,
 )
 from app.services.analysis import (
+    delete_analysis_by_id,
     get_analysis_detail,
     get_analysis_status,
     get_user_analyses,
@@ -81,7 +82,7 @@ async def get_analysis_status_endpoint(
     user: ActiveUserRateLimit,  # your authentication dependency
     db: DBSession,
 ):
-    # (Optional) Verify ownership – check if analysis belongs to user
+    # Verify ownership – check if analysis belongs to user
     analysis = await get_analysis_by_task_id_repo(task_id, db)
     if analysis and analysis.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -104,7 +105,7 @@ async def get_analysis_status_endpoint(
 
 @router.get("/", response_model=list[AnalysisSummaryResponse])
 async def list_analyses(
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUserRateLimit,
     db: DBSession,
     filters: Annotated[AnalysisFilters, Query()],
 ):
@@ -116,7 +117,7 @@ async def list_analyses(
 @router.get("/{analysis_id}", response_model=AnalysisDetailedResponse)
 async def get_analysis(
     analysis_id: int,
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUserRateLimit,
     db: DBSession,
 ):
     """Get detailed analysis by ID (only if owned by current user)."""
@@ -126,3 +127,19 @@ async def get_analysis(
     if analysis.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
     return analysis
+
+
+@router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_analysis(
+    analysis_id: int,
+    user: ActiveUserRateLimit,
+    db: DBSession,
+):
+    """Delete analysis by ID (only if owned by current user)."""
+    analysis = await get_analysis_detail(analysis_id=analysis_id, db=db)
+    if analysis is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    if analysis.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    await delete_analysis_by_id(analysis_id=analysis.id, db=db)
