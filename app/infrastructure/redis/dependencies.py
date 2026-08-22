@@ -9,7 +9,8 @@ from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.client import RDClient
 from app.infrastructure.redis.rate_limiter import RedisRateLimiter
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
+
 # ============ Core Rate Limit Functions ============
 
 
@@ -31,6 +32,10 @@ async def check_rate_limit(
     )
 
     if is_limited:
+        logger.error(
+            "rate limit for request with ip: %s",
+            request.client.host if request.client is not None else "unknown",
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={"message": "Too many requests", "rate_limit": info},
@@ -42,26 +47,28 @@ async def check_rate_limit(
             },
         )
 
-        logger.error(
-            "rate limit for request with ip: %s", request.client.host or "unknown"
-        )
-
     return info
 
 
 # ============ Specific Rate Limiters ============
+
+
 async def user_limiter(
     request: Request,
     user: CurrrentUser,
     redis: RDClient,
-    max_requests: int = 60,
-    window_seconds: int = 60,
-) -> AdminUser:
-    """Rate limiter for admin endpoints"""
+) -> CurrrentUser:
+    """Rate limiter for user endpoints"""
     client_ip = request.client.host if request.client else "unknown"
-    key = f"user:{user.id}:{client_ip}"  # Better key with separator
+    key = f"user:{user.id}:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=60,
+        window_seconds=60,
+    )
     return user
 
 
@@ -69,14 +76,18 @@ async def admin_limiter(
     request: Request,
     user: AdminUser,
     redis: RDClient,
-    max_requests: int = 100,
-    window_seconds: int = 60,
 ) -> AdminUser:
     """Rate limiter for admin endpoints"""
     client_ip = request.client.host if request.client else "unknown"
-    key = f"admin:{user.id}:{client_ip}"  # Better key with separator
+    key = f"admin:{user.id}:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=100,
+        window_seconds=60,
+    )
     return user
 
 
@@ -84,14 +95,18 @@ async def active_user_limiter(
     request: Request,
     user: ActiveUser,
     redis: RDClient,
-    max_requests: int = 60,
-    window_seconds: int = 60,
 ) -> ActiveUser:
-    """Rate limiter for authenticated user endpoints"""
+    """Rate limiter for active user endpoints"""
     client_ip = request.client.host if request.client else "unknown"
     key = f"user:{user.id}:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=60,
+        window_seconds=60,
+    )
     return user
 
 
@@ -99,44 +114,54 @@ async def analysis_limiter(
     request: Request,
     user: ActiveUser,
     redis: RDClient,
-    max_requests: int = 10,
-    window_seconds: int = 60,
 ) -> ActiveUser:
-    """Rate limiter for authenticated user endpoints"""
+    """Rate limiter for analysis endpoints (stricter limit)"""
     client_ip = request.client.host if request.client else "unknown"
-    key = f"user:{user.id}:{client_ip}"
+    key = f"analysis:{user.id}:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=10,
+        window_seconds=60,
+    )
     return user
 
 
 async def general_limiter(
     request: Request,
     redis: RDClient,
-    max_requests: int = 60,
-    window_seconds: int = 60,
 ) -> str:
     """Rate limiter for public endpoints (by IP only)"""
     client_ip = request.client.host if request.client else "unknown"
     key = f"public:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=60,
+        window_seconds=60,
+    )
     return "ok"
 
 
 async def login_limiter(
     request: Request,
     redis: RDClient,
-    max_requests: int = 10,
-    window_seconds: int = 60,
 ) -> str:
     """Special rate limiter for login endpoints"""
     client_ip = request.client.host if request.client else "unknown"
-    # Use username from request body if available for stricter limiting
-    # This requires accessing request body, which needs special handling
     key = f"login:{client_ip}"
 
-    await check_rate_limit(request, redis, key, max_requests, window_seconds)
+    await check_rate_limit(
+        request=request,
+        redis=redis,
+        key=key,
+        max_requests=10,
+        window_seconds=60,
+    )
     return "ok"
 
 
@@ -191,12 +216,12 @@ def create_rate_limiter(
 # ============ Pre-configured Rate Limiters ============
 
 # For authenticated endpoints
-UserRateLimit = Annotated[CurrrentUser, user_limiter]
+UserRateLimit = Annotated[CurrrentUser, Depends(user_limiter)]
 AdminRateLimit = Annotated[AdminUser, Depends(admin_limiter)]
 ActiveUserRateLimit = Annotated[ActiveUser, Depends(active_user_limiter)]
 
 # For analysis endpoints
-ActiveUserAnalysisRateLimit = Annotated[ActiveUser, analysis_limiter]
+ActiveUserAnalysisRateLimit = Annotated[ActiveUser, Depends(analysis_limiter)]
 
 # For public endpoints
 PublicRateLimit = Annotated[str, Depends(general_limiter)]
@@ -213,6 +238,7 @@ RateLimitPerUser = Annotated[
         create_rate_limiter(
             max_requests=100,
             window_seconds=60,
+            key_prefix="user_only",
             include_user=True,
             include_ip=False,
         )

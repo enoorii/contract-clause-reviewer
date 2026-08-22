@@ -31,7 +31,7 @@ from app.services.users import (
 )
 from app.services.users import create_user as create_user_service
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/users")
 

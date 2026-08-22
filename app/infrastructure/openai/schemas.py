@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from app.core.enums import RiskLevel
 from app.infrastructure.logging import get_logger
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class LegalClause(BaseModel):

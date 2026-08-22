@@ -19,7 +19,7 @@ from app.repositories.analysis_repositories import (
 from app.services.analysis import get_analysis_detail
 from app.tasks.report_tasks import create_report_pdf
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 async def queue_report_generation(

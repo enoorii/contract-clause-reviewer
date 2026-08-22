@@ -22,7 +22,7 @@ from app.repositories.analysis_repositories import (
 from app.schemas.analysis import AnalysisCreate
 from app.tasks.document_tasks import analyze_legal_document_task
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 async def queue_analysis_task(

@@ -6,6 +6,7 @@ from typing import Optional
 from uuid import UUID
 
 from celery import Task
+from sqlmodel import select
 
 from app.core.celery import celery_app
 from app.core.enums import RiskLevel
@@ -37,10 +38,11 @@ def run_async_analysis(analyzer, document_text, temperature):
     max_retries=3,
     default_retry_delay=60,
     autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=600,
+    retry_backoff=True,  # Enables exponential backoff for retry delays
+    retry_backoff_max=600,  # Adds random jitter to retry delays prevents "thundering herd" problem where many tasks retry simultaneously
     retry_jitter=True,
-    acks_late=True,
+    expires=120,
+    acks_late=True,  #  If worker crashes during execution, the task goes back to the queue for another worker
 )
 def analyze_legal_document_task(
     self: Task,
@@ -71,9 +73,9 @@ def analyze_legal_document_task(
         # 2. Persist to database (synchronously)
         with get_sync_db() as session:
             # Idempotency: check if analysis already exists for this task
-            existing = (
-                session.query(Analysis).filter(Analysis.task_id == task_id).first()
-            )
+            existing = session.exec(
+                select(Analysis).where(Analysis.task_id == task_id)
+            ).first()
             if existing:
                 logger.info("Analysis already saved for task %s, skipping", task_id)
                 analysis_id = existing.id

@@ -14,7 +14,7 @@ from app.services.reports import (
     queue_report_generation,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 

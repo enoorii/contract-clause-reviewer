@@ -25,7 +25,7 @@ from app.services.analysis import (
     queue_analysis_task,
 )
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 

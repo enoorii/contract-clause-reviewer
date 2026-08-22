@@ -32,7 +32,7 @@ from app.repositories.user_repositories import (
 )
 from app.schemas.base import ClientInfo
 
-logger = get_logger(name=__file__)
+logger = get_logger(name=__name__)
 
 
 # ---------- Database TokenStore Implementation ----------

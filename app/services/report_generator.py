@@ -147,7 +147,7 @@ def generate_report_html(analysis_data: dict[str, Any]) -> str:
 
     <div class="score-box">
         <strong>Overall Risk Score:</strong>
-        <span class="score-value">{overall_risk_score}</span> / 100
+        <span class="score-value">{overall_risk_score}</span> / 10
     </div>
 
     <h2>Document Summary</h2>

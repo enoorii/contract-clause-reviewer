@@ -66,3 +66,7 @@ celery_app.conf.task_routes = {
     "create_report_pdf": {"queue": "analysis"},
     "cleanup_expired_refresh_tokens": {"queue": "cleanup"},
 }
+
+
+# global settings
+celery_app.conf.result_expires = 60  # Results expire after 60 seconds

@@ -9,7 +9,7 @@ from app.core.config import setting
 from app.infrastructure.logging import get_logger
 from app.infrastructure.openai.schemas import LegalDocumentAnalysis
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 
 class LegalDocumentAnalyzer:

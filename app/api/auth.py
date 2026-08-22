@@ -28,7 +28,7 @@ from app.services.auth import (
 from app.services.auth import expire_user_sessions as expire_user_sessions_service
 from app.services.users import get_user_by_id
 
-logger = get_logger(__file__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth")
 
