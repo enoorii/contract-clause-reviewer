@@ -1,363 +1,780 @@
-## Testing Setup Guide
+<h1 align="center">
+  Contract Clause Reviewer
+</h1>
 
-### Directory Structure
+<p align="center">
+  An AI-powered contract analysis service built with FastAPI, layered architecture, Celery, Redis and PostgreSQL.
+</p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.14-blue?style=for-the-badge&logo=python">
+  <img src="https://img.shields.io/badge/FastAPI-Async%20API-green?style=for-the-badge&logo=fastapi">
+  <img src="https://img.shields.io/badge/Celery-Task%20Queue-37814A?style=for-the-badge&logo=celery">
+  <img src="https://img.shields.io/badge/Redis-Broker%20%26%20Rate%20Limit-red?style=for-the-badge&logo=redis">
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql">
+  <img src="https://img.shields.io/badge/Docker-Containerized-blue?style=for-the-badge&logo=docker">
+  <img src="https://img.shields.io/badge/uv-Package%20Manager-purple?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Ruff-Linting-orange?style=for-the-badge&logo=ruff">
+  <img src="https://img.shields.io/badge/Pytest-Testing-yellow?style=for-the-badge&logo=pytest">
+</p>
+
+<p align="center">
+  <img src="docs/images/report.webp" alt="Generated contract analysis report" width="850" style="border-radius: 12px;">
+</p>
+
+---
+
+# Contract Clause Reviewer
+
+Contract Clause Reviewer is a portfolio project for exploring how an AI-powered backend can be structured as a production-oriented service rather than as a single FastAPI application.
+
+The application accepts contract text, sends the document to an LLM for structured analysis, stores the resulting clauses and risk information, and can generate a downloadable PDF report.
+
+The project focuses primarily on the engineering behind the product:
+
+- Layered architecture with explicit separation of responsibilities
+- Dependency injection through FastAPI dependencies
+- Asynchronous HTTP, database and Redis I/O at the API boundary
+- Celery-based background processing for LLM analysis and PDF generation
+- PostgreSQL persistence with SQLModel and Alembic
+- Local JWT authentication with access/refresh token workflow
+- Refresh-token rotation and server-side token persistence
+- Role-based access control for administrative endpoints
+- Redis-backed global and endpoint-specific rate limiting
+- Queue-based application logging with dedicated audit logging
+- Dockerized API and worker deployment
+- Unit and integration test separation
+
+This is primarily an architecture and backend engineering portfolio project. It is not intended to replace professional legal review.
+
+---
+
+# Features
+
+## Contract Analysis
+
+Users can submit contract text for asynchronous analysis.
+
+The analysis service:
+
+- identifies key contract clauses
+- classifies clause types
+- assigns clause-level risk levels
+- calculates an overall document risk score
+- produces a document summary
+- highlights key terms
+- provides suggested actions and recommendations
+
+LLM output is validated against a Pydantic schema before it is persisted.
+
+The current analyzer also applies a maximum document length and truncates long documents at a paragraph boundary where possible.
+
+## Background Processing
+
+LLM analysis and PDF generation are deliberately kept out of the request/response path.
+
+The API queues Celery tasks and immediately returns a task identifier. Workers perform the expensive operations and persist the results.
+
+Celery is configured with:
+
+- dedicated analysis and cleanup queues
+- task retry policies
+- exponential retry backoff with jitter
+- late acknowledgements
+- task time limits
+- worker concurrency control
+- periodic cleanup tasks
+
+## Authentication and RBAC
+
+Authentication uses a local JWT workflow.
+
+Access tokens are short-lived JWTs containing a subject, token type, expiry and JTI. Refresh tokens are opaque random values and only their SHA-256 hashes are persisted in the database.
+
+The authentication layer supports:
+
+- access-token validation
+- refresh-token validation
+- refresh-token rotation
+- token revocation
+- session metadata such as IP address and user-agent
+- active-user checks
+- admin-only dependencies
+
+See [`docs/authentication.md`](docs/authentication.md) for the complete workflow.
+
+## Rate Limiting
+
+Redis is used for rate limiting at multiple levels.
+
+The project includes:
+
+- global per-IP protection
+- login-specific limits
+- public endpoint limits
+- authenticated-user limits
+- stricter analysis limits
+- admin endpoint limits
+- reusable custom rate-limit dependencies
+
+Rate-limit information is exposed through standard response headers such as `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset` and `Retry-After`.
+
+## Logging and Auditing
+
+The application uses a queue-based logging pipeline so application code does not synchronously perform file I/O for every log record.
+
+The logging infrastructure uses:
+
+- `QueueHandler`
+- `QueueListener`
+- rotating application logs
+- separate error and warning logs
+- access logging
+- a dedicated audit log
+- custom `AuditLogger` helpers
+- graceful queue flushing during shutdown
+
+User and administrator actions are represented as structured key/value log messages so operational events are easier to search and inspect.
+
+## PDF Report Generation
+
+Completed analyses can be converted into PDF reports.
+
+The report pipeline is:
+
+```text
+Analysis in PostgreSQL
+        |
+        v
+Celery report task
+        |
+        v
+HTML report generation
+        |
+        v
+WeasyPrint
+        |
+        v
+PDF file in reports storage
+        |
+        v
+Analysis record updated with report metadata
 ```
-project-root/
-├── .env                    # Development environment
-├── .env.test              # Test environment
-├── docker-compose.yaml    # Development services
-├── docker-compose.test.yaml # Test services
-├── app/
-│   └── main.py
-├── tests/
-└── scripts/
-    └── test.sh           # Test helper script (optional)
+
+An example report is included at [`docs/example_report.pdf`](docs/example_report.pdf).
+
+---
+
+# Screenshots
+
+<p align="center">
+  <img src="docs/images/report.webp" alt="Generated contract analysis report" width="850" style="border-radius: 12px;">
+</p>
+
+<p align="center">
+  Example generated report showing document summary, overall risk and clause-level findings.
+</p>
+
+## Database Structure
+
+<p align="center">
+  <img src="docs/images/table-structure.svg" alt="Contract Clause Reviewer database structure" width="850">
+</p>
+
+---
+
+# Architecture
+
+The application follows a layered architecture with infrastructure concerns kept separate from business-oriented services.
+
+```mermaid
+flowchart TB
+    Client[Client / Appsmith / API Consumer]
+
+    subgraph API["API Layer"]
+        Routes[FastAPI Routers]
+        Deps[Authentication & Rate-Limit Dependencies]
+    end
+
+    subgraph Services["Service Layer"]
+        Auth[Auth Services]
+        Analysis[Analysis Services]
+        Users[User Services]
+        Reports[Report Services]
+        Analyzer[LLM Analyzer]
+    end
+
+    subgraph Data["Data Access"]
+        Repos[Repository Layer]
+        Models[SQLModel Models]
+        DB[(PostgreSQL)]
+    end
+
+    subgraph Infra["Infrastructure"]
+        Redis[(Redis)]
+        Celery[Celery Workers]
+        OpenAI[OpenAI-compatible LLM]
+        Files[Report & Log Storage]
+        Logging[Queue-based Logging]
+    end
+
+    Client --> Routes
+    Routes --> Deps
+    Routes --> Auth
+    Routes --> Analysis
+    Routes --> Users
+    Routes --> Reports
+
+    Auth --> Repos
+    Analysis --> Repos
+    Users --> Repos
+    Reports --> Repos
+
+    Repos --> Models
+    Models --> DB
+
+    Deps --> Redis
+    Analysis --> Celery
+    Celery --> Analyzer
+    Analyzer --> OpenAI
+    Celery --> DB
+    Celery --> Files
+
+    Routes --> Logging
+    Services --> Logging
+    Celery --> Logging
 ```
 
-### Environment Files
+The main application boundaries are:
 
-**`.env`** (Development):
+```text
+API
+ ├── routing
+ ├── request/response concerns
+ ├── authentication dependencies
+ └── rate-limit dependencies
 
-```env
-# Environment
-DEV_MODE=False
+Services
+ ├── business workflows
+ ├── authentication logic
+ ├── analysis orchestration
+ ├── user operations
+ └── report orchestration
 
-# PostgreSQL
-POSTGRES_USER=user
-POSTGRES_PASSWORD=password
-POSTGRES_DB=db
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
+Repositories
+ └── database access capabilities
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
+Models / Schemas
+ ├── persistence models
+ └── API / validation models
+
+Core
+ ├── configuration
+ ├── security primitives
+ ├── Celery configuration
+ ├── enums / exceptions
+ └── reusable application utilities
+
+Infrastructure
+ ├── Redis
+ ├── OpenAI client integration
+ ├── file storage
+ └── logging
+
+Tasks
+ ├── document analysis
+ ├── report generation
+ └── cleanup jobs
+```
+
+The architecture is intentionally layered rather than trying to implement a fully abstract Clean Architecture or hexagonal architecture. The goal is to get most of the practical benefits of separation and testability without excessive indirection.
+
+More detail is available in [`docs/architecture.md`](docs/architecture.md).
+
+---
+
+# Backend
+
+The backend is built with:
+
+<ul>
+<li><b>FastAPI:</b> API framework and dependency injection</li>
+<li><b>SQLModel:</b> database models and SQLAlchemy integration</li>
+<li><b>PostgreSQL:</b> primary relational database</li>
+<li><b>Alembic:</b> database migrations</li>
+<li><b>Celery:</b> distributed background task processing</li>
+<li><b>Redis:</b> Celery broker/result backend and rate-limit storage</li>
+<li><b>Pydantic:</b> request, response and LLM output validation</li>
+<li><b>Granian:</b> ASGI application server</li>
+<li><b>WeasyPrint:</b> HTML-to-PDF report generation</li>
+<li><b>OpenAI-compatible API:</b> LLM integration</li>
+</ul>
+
+The Python project requires Python 3.14+ and uses `uv` for dependency management.
+
+---
+
+# Async I/O and Work Offloading
+
+The HTTP application uses asynchronous database and Redis clients and asynchronous OpenAI calls.
+
+The important design distinction is that the worker boundary is intentionally synchronous:
+
+```text
+HTTP request
+     |
+     | async
+     v
+FastAPI
+     |
+     | queue task
+     v
+Celery
+     |
+     | worker process
+     v
+CPU / blocking / long-running work
+     |
+     +--> LLM analysis
+     +--> database persistence
+     +--> PDF generation
+```
+
+This means the API remains responsive while long-running analysis and report-generation work is handled by worker processes.
+
+Celery tasks are synchronous functions by design. The document analysis task bridges to the asynchronous LLM service inside the worker process, while database persistence and PDF generation are performed synchronously within the task.
+
+This is more accurate than describing the entire system as "fully async": the web layer is async-first, while background workers intentionally isolate blocking work.
+
+---
+
+# Database
+
+PostgreSQL stores:
+
+- users
+- refresh-token records
+- analyses
+- analyzed clauses
+- report metadata
+
+SQLModel models live in `app/models/`, while database access is organized through repository functions in `app/repositories/`.
+
+The application has both:
+
+- an async database URL for the API
+- a sync database URL for Celery workers
+
+Alembic is used for schema migrations.
+
+---
+
+# Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as FastAPI
+    participant DB as PostgreSQL
+
+    C->>API: POST /auth/login/oauth
+    API->>DB: Verify user
+    API->>DB: Store hashed refresh token
+    API-->>C: Access JWT + Refresh Token
+
+    C->>API: Protected request + Access JWT
+    API->>DB: Resolve user / authorization
+    API-->>C: Protected response
+
+    C->>API: POST /auth/refresh + Refresh Token
+    API->>DB: Validate stored token hash
+    API->>DB: Revoke old token
+    API->>DB: Persist new refresh token
+    API-->>C: New Access JWT + Refresh Token
+```
+
+Access tokens are short-lived JWTs. Refresh tokens are opaque values whose hashes are stored server-side.
+
+This avoids putting refresh-token secrets directly into the database and makes server-side revocation possible.
+
+---
 
 # Security
-SECRET_KEY=your-secret-key-here
-ADMIN_USER=admin
-ADMIN_PASS=admin
 
-# Other
-DEFAULT_PER_PAGE=10
+The project includes several security-oriented controls:
+
+- password hashing with Argon2 through `pwdlib`
+- short-lived JWT access tokens
+- opaque refresh tokens
+- refresh-token rotation
+- refresh-token revocation
+- server-side refresh-token persistence
+- JTI values on access tokens
+- active-user checks
+- admin-only dependencies
+- Redis-backed rate limiting
+- audit logging for sensitive actions
+- environment-based secrets and database configuration
+
+A portfolio project should still be treated as a learning system rather than as a security-certified legal product. Production deployment would require additional controls such as secrets management, HTTPS termination, hardened cookie/CORS policy where applicable, security headers, monitoring and a formal threat model.
+
+---
+
+# Deployment
+
+Docker is used to run the production-shaped application as separate services.
+
+The Compose setup contains:
+
+```text
+PostgreSQL
+    |
+    +------------------+
+    |                  |
+    v                  v
+ FastAPI API       Celery worker
+    |                  |
+    +--------+---------+
+             |
+           Redis
 ```
 
-**`.env.test`** (Testing):
+The Dockerfile provides separate build targets for:
 
-```env
-# Environment
-DEV_MODE=True
+- `api`
+- `celery-worker`
 
-# PostgreSQL - Test
-POSTGRES_USER=test_user
-POSTGRES_PASSWORD=test_password
-POSTGRES_DB=test_db
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5433
+The runtime image includes:
 
-# Redis - Test
-REDIS_HOST=localhost
-REDIS_PORT=6380
-REDIS_PASSWORD=
+- Python 3.14
+- a non-root `appuser`
+- cached `uv` dependency installation
+- WeasyPrint system dependencies
+- application health checks for the API
 
-# Security
-SECRET_KEY=test-secret-key-for-testing-only
-ADMIN_USER=admin
-ADMIN_PASS=admin
+Docker Compose also provides persistent volumes for PostgreSQL, Redis, reports and logs.
 
-# Other
-DEFAULT_PER_PAGE=5
+---
+
+# Appsmith
+
+An Appsmith dashboard is planned as an additional client for the API.
+
+The dashboard is intended to demonstrate that the backend can serve more than one presentation layer:
+
+```text
+                    +-------------------+
+                    |   FastAPI API     |
+                    |     /api/v1       |
+                    +-------------------+
+                       /           \
+                      /             \
+                     v               v
+             Application UI      Appsmith
+                                  Dashboard
 ```
 
-### Docker Compose Files
+The Appsmith export will be committed under an `appsmith/` directory.
 
-**`docker-compose.yaml`** (Development):
+After the dashboard is added, the recommended README section should document:
 
-```yaml
-services:
-  db:
-    image: postgres:18-alpine
-    container_name: contract_clause_db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
-    ports:
-      - "5432:5432"
-    networks:
-      - task_manager_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+1. importing the Appsmith JSON export
+2. configuring the REST API datasource
+3. setting the API base URL
+4. authenticating with the local JWT endpoints
+5. configuring the analysis/report workflows
 
-  redis:
-    image: redis:7-alpine
-    container_name: contract_clause_redis
-    ports:
-      - "6379:6379"
-    networks:
-      - task_manager_network
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+The dashboard is deliberately treated as a client of the API rather than as part of the backend architecture.
 
-networks:
-  task_manager_network:
-    driver: bridge
-```
+---
 
-**`docker-compose.test.yaml`** (Testing):
+# How To Run
 
-```yaml
-services:
-  test-db:
-    image: postgres:18-alpine
-    container_name: contract_clause_test_db
-    environment:
-      POSTGRES_USER: test_user
-      POSTGRES_PASSWORD: test_password
-      POSTGRES_DB: test_db
-    ports:
-      - "5433:5432" # Different port to avoid conflicts
-    networks:
-      - test_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test_user"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
+## Requirements
 
-  test-redis:
-    image: redis:7-alpine
-    container_name: contract_clause_test_redis
-    ports:
-      - "6380:6379" # Different port to avoid conflicts
-    networks:
-      - test_network
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    restart: unless-stopped
+Make sure the following tools are installed:
 
-networks:
-  test_network:
-    driver: bridge
-```
+- Python 3.14+
+- uv
+- Docker
+- Docker Compose
 
-### Configuration (`config.py`)
+An OpenAI-compatible API endpoint is also required for actual document analysis.
 
-```python
-import os
-from pathlib import Path
-from pydantic import Field, computed_field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+## Development Setup
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-
-class Settings(BaseSettings):
-    # Database
-    POSTGRES_USER: str = "user"
-    POSTGRES_PASSWORD: str = "password"
-    POSTGRES_DB: str = "db"
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: str = "5432"
-
-    # Redis
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_PASSWORD: str | None = None
-
-    # ... other fields ...
-
-    model_config = SettingsConfigDict(
-        env_file=str(PROJECT_ROOT / os.getenv("ENV_FILE", ".env")),
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore",
-    )
-
-settings = Settings()
-```
-
-## Commands Reference
-
-### Development
-
-| Command                                                    | Description                                       |
-| ---------------------------------------------------------- | ------------------------------------------------- |
-| `docker-compose up -d`                                     | Start development services (PostgreSQL & Redis)   |
-| `docker-compose logs -f`                                   | View logs from all services                       |
-| `docker-compose down`                                      | Stop development services                         |
-| `docker-compose down -v`                                   | Stop services and remove volumes (clean database) |
-| `ENV_FILE=.env uv run uvicorn app.main:app --host 0.0.0.0` | Run application in development mode               |
-| `uv run pytest`                                            | Run tests (requires test services running)        |
-
-### Testing
-
-| Command                                                                                    | Description                                |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| `ENV_FILE=.env.test docker-compose -f docker-compose.test.yaml --env-file .env.test up -d` | Start test services                        |
-| `ENV_FILE=.env.test uv run pytest`                                                         | Run all tests with test environment        |
-| `ENV_FILE=.env.test uv run pytest tests/test_api.py -v`                                    | Run specific test file with verbose output |
-| `ENV_FILE=.env.test uv run pytest -k "test_login"`                                         | Run tests matching pattern                 |
-| `ENV_FILE=.env.test uv run pytest --cov=app`                                               | Run tests with coverage report             |
-| `docker-compose -f docker-compose.test.yaml down -v`                                       | Stop test services and clean up            |
-| `docker-compose -f docker-compose.test.yaml logs -f`                                       | View test service logs                     |
-
-### Quick Test Commands
-
-**One-liner (Full Test Run):**
+Clone the repository:
 
 ```bash
-# Start services, run tests, clean up
-ENV_FILE=.env.test docker-compose -f docker-compose.test.yaml --env-file .env.test up -d && \
-ENV_FILE=.env.test uv run pytest && \
-docker-compose -f docker-compose.test.yaml down -v
+git clone https://github.com/enoorii/contract-clause-reviewer.git
+cd contract-clause-reviewer
 ```
 
-**With Coverage:**
+Install Python dependencies:
 
 ```bash
-ENV_FILE=.env.test docker-compose -f docker-compose.test.yaml --env-file .env.test up -d && \
-ENV_FILE=.env.test uv run pytest --cov=app --cov-report=html && \
-docker-compose -f docker-compose.test.yaml down -v
+uv sync
 ```
 
-**Run Specific Test File:**
+Create the environment file:
 
 ```bash
-ENV_FILE=.env.test docker-compose -f docker-compose.test.yaml --env-file .env.test up -d && \
-ENV_FILE=.env.test uv run pytest tests/test_auth.py -v && \
-docker-compose -f docker-compose.test.yaml down -v
+cp .env.example .env
 ```
 
-### Test Helper Script
+Set the required LLM configuration and review the database, Redis, authentication and application settings in `.env`.
 
-Create `scripts/test.sh`:
+Start the development services:
 
 ```bash
-#!/bin/bash
-set -e
-
-export ENV_FILE=.env.test
-
-echo "🚀 Starting test containers..."
-docker-compose -f docker-compose.test.yaml --env-file .env.test up -d
-
-echo "⏳ Waiting for services to be ready..."
-sleep 3
-
-echo "🧪 Running tests..."
-uv run pytest "$@"
-
-TEST_EXIT_CODE=$?
-
-echo "🧹 Cleaning up..."
-docker-compose -f docker-compose.test.yaml down -v
-
-exit $TEST_EXIT_CODE
+docker compose up -d --build
 ```
 
-Make it executable:
+Run migrations when necessary:
 
 ```bash
-chmod +x scripts/test.sh
+uv run alembic upgrade head
 ```
 
-Usage:
+The API is exposed on:
 
-```bash
-./scripts/test.sh                          # Run all tests
-./scripts/test.sh -v                       # Verbose output
-./scripts/test.sh tests/test_auth.py       # Run specific test file
-./scripts/test.sh -k "test_login"          # Run tests matching pattern
-./scripts/test.sh --cov=app                # With coverage
+```text
+http://localhost:9000
 ```
 
-## Common Issues & Solutions
+OpenAPI documentation is available at:
 
-| Issue                                  | Solution                                                                                |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| `Address already in use` for port 5432 | Stop any running PostgreSQL on host, or use test environment with different ports       |
-| `Connection refused` to database       | Ensure containers are running: `docker-compose ps`                                      |
-| Container conflicts                    | Use `docker-compose down -v` to clean up                                                |
-| Environment not loading                | Ensure `ENV_FILE` is set: `export ENV_FILE=.env.test`                                   |
-| Tests failing after changes            | Rebuild containers: `docker-compose -f docker-compose.test.yaml up -d --force-recreate` |
-
-## Environment Variables Summary
-
-| Variable                  | Purpose                                 |
-| ------------------------- | --------------------------------------- |
-| `ENV_FILE=.env`           | Use development environment (default)   |
-| `ENV_FILE=.env.test`      | Use test environment                    |
-| `POSTGRES_HOST=localhost` | Connect to PostgreSQL on host (for app) |
-| `POSTGRES_PORT=5433`      | Use test PostgreSQL port                |
-| `REDIS_PORT=6380`         | Use test Redis port                     |
-
-## Quick Start
-
-```bash
-# 1. Clone repository
-git clone <your-repo>
-cd <project>
-
-# 2. Setup development environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-uv pip install -e ".[dev]"
-
-# 3. Start development services
-docker-compose up -d
-
-# 4. Run application
-ENV_FILE=.env uv run uvicorn app.main:app --host 0.0.0.0 --reload
-
-# 5. Run tests
-./scripts/test.sh
-```
-
-## CI/CD Integration
-
-For GitHub Actions, GitLab CI, etc.:
-
-```yaml
-# .github/workflows/test.yml
-- name: Run tests
-  run: |
-    ENV_FILE=.env.test docker-compose -f docker-compose.test.yaml --env-file .env.test up -d
-    ENV_FILE=.env.test pytest --cov=app --cov-report=xml
-    docker-compose -f docker-compose.test.yaml down -v
+```text
+http://localhost:9000/docs
 ```
 
 ---
 
-This setup ensures:
+# Running Celery Manually
 
-- ✅ Development and test environments are isolated
-- ✅ No port conflicts
-- ✅ Clean test runs with automatic cleanup
-- ✅ Easy to run tests locally or in CI
-- ✅ Clear separation of configurations
+For development without the full Compose worker:
 
-## Regular Commands For Dev/Test
+```bash
+ENV_FILE=.env.test uv run celery \
+  -A app.core.celery:celery_app \
+  worker \
+  --loglevel=info \
+  -Q analysis
+```
 
-docker compose -f docker-compose.test.yaml --env-file .env.test up -d
+Run the API separately:
 
-ENV_FILE=.env.test uv run alembic upgrade head
+```bash
+ENV_FILE=.env.test uv run granian \
+  --interface asgi \
+  app.main:app \
+  --host 0.0.0.0 \
+  --port 8000
+```
 
-ENV_FILE=.env.test uv run celery -A app.core.celery:celery_app worker --loglevel=info -Q analysis
+For hot reload during development:
 
-ENV_FILE=.env.test uv run granian --interface asgi app.main:app --host 0.0.0.0 --port 8000
+```bash
+ENV_FILE=.env.test uv run granian \
+  --reload \
+  --interface asgi \
+  app.main:app \
+  --host 0.0.0.0 \
+  --port 8000
+```
 
-docker compose -f docker-compose.test.yaml down -v
+---
+
+# Testing
+
+The test suite is separated into unit and integration tests:
+
+```text
+tests/
+├── conftest.py
+├── unit/
+│   ├── core/
+│   └── services/
+└── integration/
+    ├── api/
+    └── middleware/
+```
+
+The test environment is designed to minimize external dependencies:
+
+- `py-pglite` is used for PostgreSQL-compatible database testing
+- `fakeredis` is used for Redis-dependent tests
+- pytest-asyncio handles async test execution
+
+Run the full suite:
+
+```bash
+ENV_FILE=.env.test uv run pytest
+```
+
+Run a specific test module:
+
+```bash
+ENV_FILE=.env.test uv run pytest tests/integration/api/test_auth.py -v
+```
+
+Run tests matching a name:
+
+```bash
+ENV_FILE=.env.test uv run pytest -k "login"
+```
+
+See [`docs/testing.md`](docs/testing.md) for the testing strategy and fixture design.
+
+---
+
+# Project Structure
+
+```text
+contract-clause-reviewer/
+├── alembic/
+│   └── versions/
+├── app/
+│   ├── api/
+│   │   ├── analysis.py
+│   │   ├── auth.py
+│   │   ├── deps.py
+│   │   ├── reports.py
+│   │   └── users.py
+│   ├── core/
+│   │   ├── filters/
+│   │   ├── celery.py
+│   │   ├── config.py
+│   │   ├── enums.py
+│   │   ├── exceptions.py
+│   │   ├── security.py
+│   │   └── utilities.py
+│   ├── db/
+│   │   ├── database.py
+│   │   └── seed.py
+│   ├── infrastructure/
+│   │   ├── openai/
+│   │   ├── redis/
+│   │   ├── logging.py
+│   │   └── storage.py
+│   ├── middleware/
+│   │   ├── rate_limit.py
+│   │   └── request_logging.py
+│   ├── models/
+│   │   └── models.py
+│   ├── repositories/
+│   │   ├── analysis_repositories.py
+│   │   ├── refresh_token_repositories.py
+│   │   └── user_repositories.py
+│   ├── schemas/
+│   │   ├── analysis.py
+│   │   ├── base.py
+│   │   ├── report.py
+│   │   └── users.py
+│   ├── services/
+│   │   ├── analysis.py
+│   │   ├── auth.py
+│   │   ├── document_analyzer.py
+│   │   ├── report_generator.py
+│   │   ├── reports.py
+│   │   ├── services.py
+│   │   └── users.py
+│   ├── tasks/
+│   │   ├── cleanup_tasks.py
+│   │   ├── document_tasks.py
+│   │   └── report_tasks.py
+│   └── main.py
+├── docs/
+│   ├── images/
+│   │   ├── report.webp
+│   │   └── table-structure.svg
+│   ├── example_llm_schema.json
+│   └── example_report.pdf
+├── tests/
+│   ├── integration/
+│   │   ├── api/
+│   │   └── middleware/
+│   ├── unit/
+│   │   ├── core/
+│   │   └── services/
+│   └── conftest.py
+├── .env.example
+├── .env.test.example
+├── Dockerfile
+├── docker-compose.yaml
+├── docker-compose.test.yaml
+├── alembic.ini
+├── pyproject.toml
+└── uv.lock
+```
+
+---
+
+# Documentation
+
+More detailed engineering notes are kept under `docs/`:
+
+- [`architecture.md`](docs/architecture.md) — layer responsibilities, dependency direction and design decisions
+- [`authentication.md`](docs/authentication.md) — JWT, refresh-token rotation and RBAC workflow
+- [`background-processing.md`](docs/background-processing.md) — Celery queues, retries and worker design
+- [`testing.md`](docs/testing.md) — unit/integration strategy and test infrastructure
+- [`appsmith.md`](docs/appsmith.md) — planned Appsmith dashboard integration
+- [`example_report.pdf`](docs/example_report.pdf) — sample generated report
+- [`example_llm_schema.json`](docs/example_llm_schema.json) — example structured LLM output schema
+
+---
+
+# Design Goals
+
+The project was built around a few practical engineering goals:
+
+### 1. Keep request handlers thin
+
+FastAPI routes should primarily translate HTTP concerns into calls to application services.
+
+### 2. Keep business workflows out of repositories
+
+Repositories expose data-access capabilities. Services compose those capabilities into application operations.
+
+### 3. Offload long-running work
+
+LLM analysis and PDF generation should not block HTTP requests.
+
+### 4. Make infrastructure replaceable
+
+Redis, the LLM provider, file storage and logging live behind infrastructure-oriented modules rather than being scattered across route handlers.
+
+### 5. Make security explicit
+
+Authentication, authorization, refresh-token persistence and rate limiting are treated as first-class application concerns.
+
+### 6. Keep tests independent from external services where possible
+
+The test suite uses test substitutes for PostgreSQL and Redis so most tests can run without starting the full production stack.
+
+---
+
+# Limitations and Future Improvements
+
+This repository intentionally focuses on backend architecture rather than on building a complete commercial legal product.
+
+Some areas that could be expanded in a production system include:
+
+- document upload and extraction from PDF/DOCX files
+- streaming or progress events for long-running analyses
+- more advanced LLM evaluation and regression testing
+- prompt/version management
+- model/provider failover
+- distributed tracing and metrics
+- centralized secrets management
+- object storage instead of local report files
+- more granular authorization policies
+- stronger production security hardening
+- CI/CD workflows and automated release management
+- the Appsmith dashboard and its integration documentation
+
+---
+
+# License
+
+This project is intended as a portfolio and educational project.
