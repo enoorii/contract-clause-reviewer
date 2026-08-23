@@ -1,0 +1,77 @@
+MASTER SUBSCRIPTION AGREEMENT
+
+This Master Subscription Agreement ("Agreement") is entered into as of January 15, 2026 ("Effective Date") by and between CloudTech Solutions Inc., a Delaware corporation with principal place of business at 123 Tech Park, San Francisco, CA 94105 ("Provider"), and Acme Global Corp., a New York corporation with principal place of business at 456 Corporate Plaza, New York, NY 10001 ("Customer").
+
+1. SUBSCRIPTION SERVICES
+
+1.1 Provision of Services. Provider shall make available to Customer the cloud-based project management software platform known as "ProjectFlow Enterprise" (the "Services") on a subscription basis. The Services shall be provided in accordance with the Service Level Agreement attached hereto as Exhibit A.
+
+1.2 Users. Customer may authorize up to five hundred (500) individual users ("Authorized Users") to access the Services. Authorized Users shall be employees, contractors, or agents of Customer. Customer is responsible for all activities that occur under its Authorized Users' accounts.
+
+2. FEES AND PAYMENT
+
+2.1 Subscription Fees. Customer shall pay Provider an annual subscription fee of Two Hundred Fifty Thousand Dollars ($250,000.00), payable in advance within thirty (30) days of invoice. Provider may increase fees upon renewal with at least fifteen (15) days prior written notice.
+
+2.2 Late Payments. Any amounts not paid when due shall bear interest at the rate of one and one-half percent (1.5%) per month, or the maximum rate permitted by applicable law, whichever is less. Provider reserves the right to suspend access to the Services if payment is more than ten (10) days overdue.
+
+3. TERM AND TERMINATION
+
+3.1 Term. This Agreement shall commence on the Effective Date and continue for a period of three (3) years (the "Initial Term"). Thereafter, this Agreement shall automatically renew for successive one (1) year periods unless either party provides written notice of non-renewal at least sixty (60) days prior to the end of the then-current term.
+
+3.2 Termination for Cause. Either party may terminate this Agreement if the other party materially breaches this Agreement and fails to cure such breach within thirty (30) days after receiving written notice thereof. Provider may terminate this Agreement immediately upon written notice if Customer becomes insolvent or files for bankruptcy.
+
+3.3 Effect of Termination. Upon termination, Customer shall immediately cease all use of the Services. Provider shall, upon Customer's written request within thirty (30) days after termination, make available to Customer an export of Customer Data in a format reasonably determined by Provider. Provider shall thereafter delete Customer Data within ninety (90) days. No refunds shall be given for unused pre-paid fees.
+
+4. WARRANTIES AND DISCLAIMERS
+
+4.1 Provider Warranties. Provider warrants that the Services shall perform substantially in accordance with the documentation provided. Provider's sole liability for breach of this warranty shall be to use commercially reasonable efforts to correct the non-conformity, or if Provider cannot correct the non-conformity, to terminate the affected Services and refund any pre-paid fees for the terminated Services.
+
+4.2 Disclaimer. EXCEPT AS EXPRESSLY PROVIDED IN SECTION 4.1, THE SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE." PROVIDER DISCLAIMS ALL OTHER WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NON-INFRINGEMENT. PROVIDER DOES NOT WARRANT THAT THE SERVICES WILL BE UNINTERRUPTED, ERROR-FREE, OR SECURE.
+
+5. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL PROVIDER BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR FOR LOSS OF PROFITS, REVENUE, DATA, OR GOODWILL, ARISING OUT OF OR RELATED TO THIS AGREEMENT, WHETHER BASED ON CONTRACT, TORT, OR ANY OTHER THEORY, AND REGARDLESS OF WHETHER PROVIDER HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. PROVIDER'S TOTAL LIABILITY UNDER THIS AGREEMENT SHALL NOT EXCEED THE FEES PAID BY CUSTOMER DURING THE TWELVE (12) MONTHS PRECEDING THE EVENT GIVING RISE TO THE CLAIM. MULTIPLE CLAIMS SHALL NOT EXPAND THIS LIMITATION.
+
+6. INDEMNIFICATION
+
+Customer agrees to indemnify, defend, and hold harmless Provider and its officers, directors, employees, and agents from and against any and all claims, losses, damages, liabilities, costs, and expenses (including reasonable attorneys' fees) arising out of or related to Customer's use of the Services, Customer's violation of this Agreement, or Customer's violation of any applicable laws or third-party rights. Provider shall indemnify Customer only if a third party claims that the Services infringe any U.S. intellectual property rights, provided that Customer promptly notifies Provider in writing of the claim and gives Provider sole control of the defense and settlement.
+
+7. CONFIDENTIALITY
+
+Each party agrees to maintain the confidentiality of the other party's Confidential Information. "Confidential Information" means any information disclosed by one party to the other that is designated as confidential or that reasonably should be understood to be confidential. Each party shall use at least reasonable care to protect the other's Confidential Information and shall not disclose it to any third party except to employees and contractors with a need to know, provided they are bound by confidentiality obligations no less restrictive than those in this Agreement. The obligations in this Section shall survive termination of this Agreement indefinitely.
+
+8. DATA PRIVACY AND SECURITY
+
+Customer acknowledges that the Services may involve the processing of Customer Data. Provider shall implement and maintain reasonable security measures to protect Customer Data from unauthorized access, use, or disclosure. Provider reserves the right to collect, use, and disclose aggregated and anonymized data derived from Customer's use of the Services for purposes of improving the Services and for benchmarking and marketing.
+
+9. GOVERNING LAW AND DISPUTE RESOLUTION
+
+This Agreement shall be governed by and construed in accordance with the laws of the State of California, without regard to its conflict of laws principles. Any dispute arising out of or relating to this Agreement shall be resolved exclusively by the state and federal courts located in San Francisco County, California. Each party irrevocably consents to the personal jurisdiction and venue of such courts. The United Nations Convention on Contracts for the International Sale of Goods shall not apply.
+
+10. GENERAL PROVISIONS
+
+10.1 Force Majeure. Neither party shall be liable for any failure or delay in performance (except for payment obligations) due to causes beyond its reasonable control, including but not limited to acts of God, war, terrorism, pandemic, government action, or internet service provider failures.
+
+10.2 Assignment. Customer may not assign this Agreement without Provider's prior written consent, which shall not be unreasonably withheld. Provider may assign this Agreement without consent in connection with a merger, acquisition, or sale of substantially all of its assets. This Agreement shall bind and inure to the benefit of the parties' permitted successors and assigns.
+
+10.3 Entire Agreement. This Agreement, including all exhibits and schedules attached hereto, constitutes the entire agreement between the parties concerning the subject matter hereof and supersedes all prior agreements, representations, and understandings.
+
+10.4 Amendment. This Agreement may be amended only by a written instrument signed by both parties. However, Provider may update the Service Level Agreement or documentation from time to time, provided that such updates do not materially diminish the Services.
+
+10.5 Severability. If any provision of this Agreement is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect, and the invalid provision shall be replaced by a valid provision that most closely approximates the intent and economic effect of the invalid provision.
+
+10.6 Notices. All notices under this Agreement shall be in writing and deemed given upon personal delivery, three (3) business days after deposit with a reputable overnight courier, or five (5) business days after deposit in the U.S. mail, postage prepaid, to the addresses first set forth above.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement by their duly authorized representatives as of the Effective Date.
+
+CLOUDTECH SOLUTIONS INC.
+By: _________________________
+Name: Sarah Johnson
+Title: CEO
+Date: 1/15/2026
+
+ACME GLOBAL CORP.
+By: _________________________
+Name: Michael Chen
+Title: VP of Procurement
+Date: 1/15/2026
