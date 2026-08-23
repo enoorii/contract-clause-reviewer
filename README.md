@@ -530,11 +530,7 @@ Start the development services:
 docker compose up -d --build
 ```
 
-Run migrations when necessary:
-
-```bash
-uv run alembic upgrade head
-```
+This will run alembic migrations using the existing migration file in the repo.
 
 The API is exposed on:
 
@@ -546,6 +542,15 @@ OpenAPI documentation is available at:
 
 ```text
 http://localhost:9000/docs
+```
+
+## Generate Alembic Migrations
+
+To do this you should run database using `docker-compose.test.yaml` and then run alembic.
+
+```text
+docker compose -f docker-compose.test.yaml --env-file .env.test up -d
+ENV_FILE=.env.test uv run alembic revision --autogenerate -m "message"
 ```
 
 ---
