@@ -48,7 +48,7 @@ app.include_router(reports_router, prefix="/api/v1")
 
 
 # Add health check endpoint
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Simple health check endpoint."""
     return {"status": "ok", "message": "Service is running"}

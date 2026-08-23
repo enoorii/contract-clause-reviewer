@@ -135,7 +135,7 @@ Ensure your analysis is structured and actionable.
 
         except ValidationError as e:
             logger.error(f"Pydantic validation error: {e}")
-            raise ValidationError(f"Response didn't match expected schema: {e}")
+            raise
 
         except Exception as e:
             logger.error(f"OpenAI API error: {e}")

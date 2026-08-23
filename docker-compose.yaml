@@ -1,41 +1,116 @@
 services:
   db:
     image: postgres:18-alpine
+    container_name: contract_clause_db
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-db}
+    networks:
+      - production_network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-db}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
-    container_name: contract_clause_db
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
-    ports:
-      - "5432:5432"
-    networks:
-      - production_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
 
   redis:
     image: redis:6-alpine
-    container_name: contract_clause_re
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: ${POSTGRES_DB:-db}
-    ports:
-      - "6379:6379"
+    container_name: contract_clause_redis
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
     networks:
       - production_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U db"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: .
+      target: api
+    image: contract_clause_reviewer_api:latest
+    container_name: contract_clause_reviewer_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - RUN_MIGRATIONS=true
+    ports:
+      - "9000:8000"
+    volumes:
+      - reports_data:/app/reports:rw
+      - logs_data:/app/logs:rw
+      - alembic_versions:/app/alembic/versions:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - production_network
+    logging:
+      # This captures stdout/stderr from the container
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery-worker:
+    build:
+      context: .
+      target: celery-worker
+    image: contract_clause_reviewer_celery:latest
+    container_name: contract_clause_reviewer_celery
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - RUN_MIGRATIONS=false
+    volumes:
+      - reports_data:/app/reports:rw
+      - logs_data:/app/logs:rw
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - production_network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  production_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  reports_data:
+  logs_data:
+  alembic_versions:
