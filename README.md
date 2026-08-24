@@ -416,7 +416,7 @@ The project includes several security-oriented controls:
 - audit logging for sensitive actions
 - environment-based secrets and database configuration
 
-A portfolio project should still be treated as a learning system rather than as a security-certified legal product. Production deployment would require additional controls such as secrets management, HTTPS termination, hardened cookie/CORS policy where applicable, security headers, monitoring and a formal threat model.
+This portfolio project should still be treated as a learning system rather than as a security-certified legal product. Production deployment would require additional controls such as secrets management, HTTPS termination, hardened cookie/CORS policy where applicable, security headers, monitoring and a formal threat model.
 
 ---
 
@@ -457,34 +457,6 @@ Docker Compose also provides persistent volumes for PostgreSQL, Redis, reports a
 ---
 
 # Appsmith
-
-An Appsmith dashboard is planned as an additional client for the API.
-
-The dashboard is intended to demonstrate that the backend can serve more than one presentation layer:
-
-```text
-                    +-------------------+
-                    |   FastAPI API     |
-                    |     /api/v1       |
-                    +-------------------+
-                       /           \
-                      /             \
-                     v               v
-             Application UI      Appsmith
-                                  Dashboard
-```
-
-The Appsmith export will be committed under an `appsmith/` directory.
-
-After the dashboard is added, the recommended README section should document:
-
-1. importing the Appsmith JSON export
-2. configuring the REST API datasource
-3. setting the API base URL
-4. authenticating with the local JWT endpoints
-5. configuring the analysis/report workflows
-
-The dashboard is deliberately treated as a client of the API rather than as part of the backend architecture.
 
 ---
 
