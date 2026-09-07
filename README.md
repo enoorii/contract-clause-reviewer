@@ -22,6 +22,29 @@
   <img src="docs/images/report.webp" alt="Generated contract analysis report" width="850" style="border-radius: 12px;">
 </p>
 
+<table>
+<tr>
+<td align="center">
+<img src="docs/images/login.webp" alt="Login page" width="400">
+</td>
+
+<td align="center">
+<img src="docs/images/users.webp" alt="User management page" width="400">
+</td>
+</tr>
+
+<tr>
+<td align="center">
+<img src="docs/images/analysis-review1.webp" alt="Analysis review page" width="400">
+</td>
+
+<td align="center">
+<img src="docs/images/analyze.webp" alt="Analysis creation" width="400">
+</td>
+</tr>
+
+</table>
+
 ---
 
 # Contract Clause Reviewer
@@ -472,22 +495,29 @@ The dashboard is intended to demonstrate that the backend can serve more than on
              Application UI      Appsmith
                                   Dashboard
 ```
+
 As a result the dashboard is deliberately treated as a client of the API rather than as part of the backend architecture.
 
 To use and test the dashboard you should:
+
 1. importing the Appsmith JSON export
 2. configuring the REST API datasource
 3. setting the API base URL
 
 ## Connect Appsmith To API
+
 Make sure you have a running instance of app using [#How To Run] section. Then find the API base URL/IP needed for Appsmith datasource using:
+
 ```bash
 $ docker inspect contract_clause_reviewer_api | grep IPAddress
 ```
+
 You will get something like:
+
 ```text
 "IPAddress": "172.22.0.4"
 ```
+
 Use this IP as the base URL for datasource.
 
 ---
