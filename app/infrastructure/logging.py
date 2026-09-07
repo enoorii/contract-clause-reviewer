@@ -354,7 +354,10 @@ def flush_logs() -> None:
 
     for handler in _listener.handlers:
         if hasattr(handler, "flush"):
-            handler.flush()
+            try:
+                handler.flush()
+            except ValueError:
+                pass
 
 
 def shutdown_logging() -> None:
@@ -369,14 +372,6 @@ def shutdown_logging() -> None:
 
     _listener.stop()
     _listener = None
-
-    # Close audit handlers as well.
-    if _audit_logger:
-        for handler in _audit_logger.handlers:
-            handler.flush()
-            handler.close()
-
-        _audit_logger.handlers.clear()
 
     _audit_logger = None
     _initialized = False

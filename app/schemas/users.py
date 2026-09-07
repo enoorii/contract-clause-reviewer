@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlmodel import asc, col, desc
 from sqlmodel.sql.expression import SelectOfScalar
 
+from app.core.config import setting
 from app.core.enums import Role
 from app.models.models import User
 from app.schemas.analysis import AnalysisSummaryResponse
@@ -41,6 +42,10 @@ class UserFilters(BaseModel):
         if self.search:
             search_pattern = f"%{self.search}%"
             stm = stm.where(col(User.username).ilike(search_pattern))
+        if self.role:
+            stm = stm.where(User.role == self.role)
+        if self.is_active is not None:
+            stm = stm.where(User.is_active == self.is_active)
         if self.from_date:
             from_date = self.from_date
             if from_date.tzinfo is None:
@@ -72,6 +77,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+    expires_in: int = Field(default=setting.ACCESS_TOKEN_EXPIRATION_MINUTES * 60)
 
 
 class UserCreate(BaseModel):
@@ -94,11 +100,17 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     username: str
+    role: str
+    must_change_password: bool
+    is_active: bool
 
 
 class UserDetailedResponse(BaseModel):
     id: UUID
     username: str
+    role: str
+    must_change_password: bool
+    is_active: bool
     analyses: list[AnalysisSummaryResponse] | None = Field(default=None)
 
 

@@ -1,10 +1,9 @@
 # Appsmith Integration
 
 The backend is designed as an API-first service so that multiple clients can consume it.
+The Appsmith dashboard is one such client.
 
-The planned Appsmith dashboard is one such client.
-
-## Planned Structure
+## Structure
 
 ```text
                         Contract Clause Reviewer API
@@ -29,33 +28,13 @@ It should primarily:
 - provide administrative views where authorized
 
 ## Importing the Dashboard
-
-When the dashboard export is added to the repository, it should live under:
-
+The Appsmith dashboard is available in following path:
 ```text
 appsmith/
+└── Contract Clause Reviewer.json
 ```
 
-For example:
-
-```text
-appsmith/
-└── contract-clause-reviewer.json
-```
-
-The exact exported filename may differ.
-
-After importing the export into Appsmith:
-
-1. create or update the REST API datasource
-2. configure the API base URL
-3. configure authentication requests
-4. map the analysis endpoints
-5. verify that protected requests send the access token
-6. verify the analysis polling workflow
-7. verify report generation/download
-
-## Suggested API Flow
+## API Flow
 
 ```text
 Login
@@ -76,37 +55,28 @@ GET analysis status
 Completed Analysis
   |
   +--> display risk / clauses
-  |
-  v
-POST /api/v1/reports/{analysis_id}
-  |
-  v
-Report Task ID
-  |
-  v
-GET report status
-  |
-  v
-Download PDF
 ```
 
 ## Why Appsmith Is Useful Here
 
 The Appsmith dashboard is not intended to replace the application's architecture.
-
 It demonstrates an important property of the backend:
 
 > presentation can change without moving business logic into the presentation layer.
 
 The same API can therefore support a coded frontend, an Appsmith dashboard, or another client without duplicating analysis, authorization, persistence and background-processing logic.
 
-## Repository Layout
+## Technical Notes
+Appsmith dashboard impelements following functionalities.
 
-Once the dashboard is committed, the repository can use:
+1. Custom JWT based RBAC authentication. With automatic refresh and error handling behind the scene
+2. Automatic redirects
+3. Centeralized API Client that provides a single interfance for messages, error handling, logic check and redirects
+4. Multi-Page setup, each page uses an specific JS object for exclusive functionalities
+5. Shared logic from first 3 point of technical notes between all pages
+6. Appsmith native functionalities are used to implement lists within lists logic to represent analysis and their sub-items in a graceful manner
 
-```text
-appsmith/
-└── <exported dashboard>.json
-```
-
-The README should then link directly to the export and include a screenshot of the finished dashboard alongside the generated report screenshot.
+## Reflections
+I used some components from one of my previous [projects](https://github.com/enoorii/JinjaTask) and Appsmith allows to copy widgets (or group of widgets) between projects and modify them for new project needs. That being said Appsmith cannot provide the same reusability as coded UIs.
+I tried to design the structure in a way that implementations become decoupled from project logic so they can be reused later. But that essentially made me to use code extensively. (essentially covering all queries by a shared API client which is called through JS objects)
+Nature of Appsmith as a low/no code app builder make the experience of using code less than satisfactory. At this point maybe using a simple coded solution (ex: svelte or htmx+alpinejs) be a better solution as AI can be a lot more helpful and if well structured many of components can be reused later.

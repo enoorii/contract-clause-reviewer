@@ -458,6 +458,38 @@ Docker Compose also provides persistent volumes for PostgreSQL, Redis, reports a
 
 # Appsmith
 
+An Appsmith dashboard is provided in `appsmith/` directory.
+The dashboard is intended to demonstrate that the backend can serve more than one presentation layer:
+
+```text
+                    +-------------------+
+                    |   FastAPI API     |
+                    |     /api/v1       |
+                    +-------------------+
+                       /           \
+                      /             \
+                     v               v
+             Application UI      Appsmith
+                                  Dashboard
+```
+As a result the dashboard is deliberately treated as a client of the API rather than as part of the backend architecture.
+
+To use and test the dashboard you should:
+1. importing the Appsmith JSON export
+2. configuring the REST API datasource
+3. setting the API base URL
+
+## Connect Appsmith To API
+Make sure you have a running instance of app using [#How To Run] section. Then find the API base URL/IP needed for Appsmith datasource using:
+```bash
+$ docker inspect contract_clause_reviewer_api | grep IPAddress
+```
+You will get something like:
+```text
+"IPAddress": "172.22.0.4"
+```
+Use this IP as the base URL for datasource.
+
 ---
 
 # How To Run

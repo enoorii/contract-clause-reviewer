@@ -18,6 +18,7 @@ from app.schemas.analysis import (
     AnalysisStatusResponse,
     AnalysisSummaryResponse,
 )
+from app.schemas.base import PaginatedResponse
 from app.services.analysis import (
     delete_analysis_by_id,
     get_analysis_detail,
@@ -103,7 +104,7 @@ async def get_analysis_status_endpoint(
         return {"status": "unknown", "task_id": task_id}
 
 
-@router.get("/", response_model=list[AnalysisSummaryResponse])
+@router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])
 async def list_analyses(
     user: ActiveUserRateLimit,
     db: DBSession,
@@ -111,7 +112,7 @@ async def list_analyses(
 ):
     """List all analyses for the current user."""
     result = await get_user_analyses(user_id=user.id, db=db, filters=filters)
-    return result["items"]
+    return result
 
 
 @router.get("/{analysis_id}", response_model=AnalysisDetailedResponse)

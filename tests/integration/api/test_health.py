@@ -35,7 +35,7 @@ class TestHealthEndpoint:
 
     async def test_health_endpoint_success(self, client):
         """Test health endpoint returns 200 OK."""
-        response = await client.get("/health")
+        response = await client.get("/api/health")
 
         assert response.status_code == 200
         data = response.json()
@@ -44,7 +44,7 @@ class TestHealthEndpoint:
 
     async def test_health_endpoint_response_format(self, client):
         """Test health endpoint response format."""
-        response = await client.get("/health")
+        response = await client.get("/api/health")
 
         assert response.status_code == 200
         data = response.json()

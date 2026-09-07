@@ -15,14 +15,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        gosu \
-        # WeasyPrint dependencies
-        libgobject-2.0-0 \
-        libpango-1.0-0 \
-        libpangocairo-1.0-0 \
-        libcairo2 \
-        libharfbuzz0b \
-        libffi-dev \
+    gosu \
+    # WeasyPrint dependencies
+    libgobject-2.0-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libcairo2 \
+    libharfbuzz0b \
+    libffi-dev \
     && \
     rm -rf /var/lib/apt/lists/*
 
