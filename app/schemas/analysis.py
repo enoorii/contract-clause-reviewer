@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import RiskLevel
+from app.schemas.base import TaskStatus
 
 
 class AnalysisCreate(BaseModel):
@@ -50,6 +51,6 @@ class AnalysisSummaryResponse(BaseModel):
 
 class AnalysisStatusResponse(BaseModel):
     task_id: str
-    status: str  # "pending", "processing", "completed", "failed"
+    status: TaskStatus
     analysis: AnalysisDetailedResponse | None = None
     error: str | None = None

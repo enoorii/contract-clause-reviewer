@@ -18,7 +18,7 @@ from app.schemas.analysis import (
     AnalysisStatusResponse,
     AnalysisSummaryResponse,
 )
-from app.schemas.base import PaginatedResponse
+from app.schemas.base import PaginatedResponse, TaskStatus
 from app.services.analysis import (
     delete_analysis_by_id,
     get_analysis_detail,
@@ -77,31 +77,48 @@ async def analyze_document(
         )
 
 
-@router.get("/status/{task_id}")
+@router.get("/status/{task_id}", response_model=AnalysisStatusResponse)
 async def get_analysis_status_endpoint(
     task_id: str,
-    user: ActiveUserRateLimit,  # your authentication dependency
+    user: ActiveUserRateLimit,
     db: DBSession,
 ):
-    # Verify ownership – check if analysis belongs to user
+    # Verify ownership
     analysis = await get_analysis_by_task_id_repo(task_id, db)
     if analysis and analysis.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    status, analysis = await get_analysis_status(task_id, db)
+    status, analysis_data = await get_analysis_status(task_id, db)
 
-    if status == "pending":
-        return {"status": "pending", "task_id": task_id}
-    elif status == "failed":
-        return {"status": "failed", "task_id": task_id, "error": "Task failed"}
-    elif status == "completed" and analysis:
+    # ✅ Unified return through response_model validation
+    if status == TaskStatus.COMPLETED and analysis_data:
         return AnalysisStatusResponse(
             task_id=task_id,
-            status="completed",
-            analysis=AnalysisDetailedResponse.model_validate(analysis),
+            status=TaskStatus.COMPLETED,
+            analysis=AnalysisDetailedResponse.model_validate(analysis_data),
+        )
+    elif status == TaskStatus.FAILED:
+        return AnalysisStatusResponse(
+            task_id=task_id,
+            status=TaskStatus.FAILED,
+            error="Task failed",
+        )
+    elif status in (TaskStatus.PENDING, TaskStatus.PROCESSING):
+        return AnalysisStatusResponse(
+            task_id=task_id,
+            status=status,
+        )
+
+    elif status in (TaskStatus.PENDING, TaskStatus.PROCESSING):
+        return AnalysisStatusResponse(
+            task_id=task_id,
+            status=status,
         )
     else:
-        return {"status": "unknown", "task_id": task_id}
+        return AnalysisStatusResponse(
+            task_id=task_id,
+            status=TaskStatus.UNKNOWN,
+        )
 
 
 @router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])

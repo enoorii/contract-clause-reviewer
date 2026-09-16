@@ -8,6 +8,7 @@ from app.api.deps import DBSession
 from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.dependencies import ActiveUserAnalysisRateLimit
 from app.repositories.analysis_repositories import get_analysis_by_report_task_id
+from app.schemas.base import TaskStatus
 from app.schemas.report import ReportStatusResponse
 from app.services.analysis import get_analysis_detail
 from app.services.reports import (
@@ -72,58 +73,64 @@ async def generate_report(
     }
 
 
-@router.get("/status/{task_id}")
+@router.get(
+    "/status/{task_id}",
+    response_model=ReportStatusResponse,  # ✅ Critical for accurate OpenAPI spec
+)
 async def get_report_status_endpoint(
     task_id: str,
     user: ActiveUserAnalysisRateLimit,
     db: DBSession,
 ):
-    """
-    Check status of report generation task.
-    The task saves the PDF and updates the DB upon completion.
-    """
-    # Verify ownership by finding analysis with this report_task_id
+    """Check status of report generation task."""
+    # Verify ownership
     analysis = await get_analysis_by_report_task_id(task_id, db)
     if not analysis:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Task not found"
         )
     if analysis.user_id != user.id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized",
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized"
         )
 
-    # Get status (no DB update)
     status_result = await get_report_status(task_id=task_id, db=db)
+    current_status = status_result["status"]
 
-    if status_result["status"] in ("pending", "processing"):
+    # ✅ Unified return through response_model - NO redirects
+    if current_status in (TaskStatus.PENDING, TaskStatus.PROCESSING):
         return ReportStatusResponse(
             task_id=task_id,
-            status=status_result["status"],
+            status=current_status,
         )
 
-    if status_result["status"] == "failed":
+    if current_status == "failed":
         return ReportStatusResponse(
             task_id=task_id,
-            status="failed",
+            status=TaskStatus.FAILED,
             error=status_result.get("error", "Report generation failed"),
         )
 
-    # Completed - redirect to download endpoint
-    file_path = status_result.get("file_path")
-    if not file_path or not Path(file_path).exists():
+    if current_status == "completed":
+        file_path = status_result.get("file_path")
+        if not file_path or not Path(file_path).exists():
+            return ReportStatusResponse(
+                task_id=task_id,
+                status=TaskStatus.FAILED,
+                error="Report file not found after completion",
+            )
+
+        # ✅ Return URL instead of redirecting
         return ReportStatusResponse(
             task_id=task_id,
-            status="failed",
-            error="Report file not found",
+            status=TaskStatus.COMPLETED,
+            download_url=f"/api/v1/reports/download/{analysis.id}",
         )
 
-    # Redirect to download endpoint
-    return RedirectResponse(
-        url=f"/api/v1/reports/download/{analysis.id}",
-        status_code=303,  # See Other - forces GET to the download endpoint
+    # Unknown/fallback state
+    return ReportStatusResponse(
+        task_id=task_id,
+        status=TaskStatus.UNKNOWN,
     )
 
 

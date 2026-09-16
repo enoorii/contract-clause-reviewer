@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel
@@ -36,3 +37,11 @@ class ClientInfo(BaseModel):
     device_type: str | None = None
     country: str | None = None
     city: str | None = None
+
+
+class TaskStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
