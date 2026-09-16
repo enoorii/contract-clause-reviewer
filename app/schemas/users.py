@@ -26,7 +26,7 @@ class UserFilters(BaseModel):
     page: int = Field(default=1, ge=1, description="Page number")
     size: int = Field(default=10, ge=1, le=100, description="Items per page")
     search: str | None = Field(
-        default=None, description="Search for tasks with this string"
+        default=None, description="Search for usernames with this string"
     )
     sort: Sort | None = Field(default=Sort.DESC)
     sort_by: SortBy | None = Field(
@@ -100,17 +100,12 @@ class UserUpdate(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     username: str
-    role: str
+    role: Role
     must_change_password: bool
     is_active: bool
 
 
-class UserDetailedResponse(BaseModel):
-    id: UUID
-    username: str
-    role: str
-    must_change_password: bool
-    is_active: bool
+class UserDetailedResponse(UserResponse):
     analyses: list[AnalysisSummaryResponse] | None = Field(default=None)
 
 
