@@ -1,5 +1,6 @@
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import type { PropsWithChildren } from "react";
+import { AuthProvider } from "@/lib/auth/auth-provider";
 
 export function Providers({ children }: PropsWithChildren) {
   return (
@@ -9,7 +10,7 @@ export function Providers({ children }: PropsWithChildren) {
       enableSystem
       disableTransitionOnChange
     >
-      {children}
+      <AuthProvider>{children}</AuthProvider>
     </NextThemeProvider>
   );
 }
