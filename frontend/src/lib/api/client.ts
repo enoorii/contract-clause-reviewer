@@ -11,10 +11,7 @@ export function setAuthHandler(handler: AuthHandler) {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
-function buildUrl(
-  endpoint: string,
-  params?: ApiRequestOptions["params"],
-): string {
+function buildUrl(endpoint: string, params?: Record<string, unknown>): string {
   const urlString = endpoint.startsWith("http")
     ? endpoint
     : `${BASE_URL}${endpoint}`;
@@ -22,7 +19,18 @@ function buildUrl(
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
+      // Skip null and undefined values
+      if (value === null || value === undefined) return;
+
+      if (Array.isArray(value)) {
+        // FastAPI expects arrays as repeated keys: ?role=admin&role=user
+        value.forEach((item) => {
+          if (item !== null && item !== undefined) {
+            url.searchParams.append(key, String(item));
+          }
+        });
+      } else {
+        // Standard primitive serialization
         url.searchParams.append(key, String(value));
       }
     });

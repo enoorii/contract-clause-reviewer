@@ -78,9 +78,7 @@ export function DashboardPage() {
               to={`/analysis/${analysis.id}`}
               className="group block"
             >
-              <Card
-                className="hover:shadow-md transition-shadow"
-              >
+              <Card className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <CardTitle className="text-lg">{analysis.title}</CardTitle>
                   {analysis.description && (

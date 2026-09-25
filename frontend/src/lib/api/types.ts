@@ -4,10 +4,21 @@
  */
 
 export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
-  /** Query parameters to be serialized into the URL */
-  params?: Record<string, string | number | boolean | null | undefined>;
+  /**
+   * Query parameters to be serialized into the URL.
+   *
+   * We use `Record<string, any>` intentionally. TypeScript interfaces
+   * do not have implicit index signatures, so strictly typed interfaces
+   * (like UserListParams) will fail to assign to `Record<string, unknown>`.
+   * Since we only read these values in buildUrl() to serialize them to strings,
+   * `any` is safe here and is the industry standard (used by Axios, Ky, etc.).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  params?: Record<string, any>;
+
   /** Skip attaching the Authorization header (e.g., for login/refresh endpoints) */
   skipAuth?: boolean;
+
   /** Request body - will be automatically JSON stringified if it's an object */
   body?: unknown;
 }

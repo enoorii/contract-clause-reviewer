@@ -3,7 +3,6 @@ import type {
   UserLogin,
   RefreshTokenRequest,
   AuthTokenResponse,
-  UserDetailed,
 } from "@/types"; // Adjust import path if your barrel export is named differently
 
 /**
@@ -46,9 +45,8 @@ export async function logout(refreshToken: string): Promise<void> {
 }
 
 /**
- * Fetches the current user's profile data.
- * Requires a valid access token (skipAuth is false by default).
+ * Expires all active sessions for a specific user (Admin only).
  */
-export async function getCurrentUser(): Promise<UserDetailed> {
-  return api.get<UserDetailed>("/api/v1/users/me");
+export async function expireUserSessions(userId: string): Promise<void> {
+  return api.post<void>(`/api/v1/auth/sessions/expire/${userId}`);
 }

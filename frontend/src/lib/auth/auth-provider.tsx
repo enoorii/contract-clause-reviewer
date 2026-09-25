@@ -8,6 +8,7 @@ import { AuthContext, type AuthStatus } from "./auth-context";
 import { tokenStorage } from "@/lib/auth/storage";
 import { setAuthHandler } from "@/lib/api/client";
 import * as authApi from "@/features/auth/api";
+import * as usersApi from "@/features/users/api";
 import type { UserDetailed } from "@/types";
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -24,7 +25,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       try {
         // Try to fetch current user with existing access token
-        const userData = await authApi.getCurrentUser();
+        const userData = await usersApi.getProfile();
         setUser(userData);
         setStatus("authenticated");
       } catch {
@@ -43,7 +44,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           tokenStorage.setRefreshToken(tokens.refresh_token);
 
           // Retry fetching user
-          const userData = await authApi.getCurrentUser();
+          const userData = await usersApi.getProfile();
           setUser(userData);
           setStatus("authenticated");
         } catch {
@@ -91,7 +92,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       tokenStorage.setAccessToken(tokens.access_token);
       tokenStorage.setRefreshToken(tokens.refresh_token);
 
-      const userData = await authApi.getCurrentUser();
+      const userData = await usersApi.getProfile();
       setUser(userData);
       setStatus("authenticated");
     } catch (error) {
