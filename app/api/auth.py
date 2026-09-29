@@ -45,7 +45,7 @@ async def login(
     user_data: Annotated[UserLogin, Body()],
     db: DBSession,
     request: Request,
-    limiter: LoginRateLimit,
+    _: LoginRateLimit,
 ):
     """
     Login user with username and password.
@@ -114,7 +114,7 @@ async def login_oauth(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DBSession,
     request: Request,
-    limiter: PublicRateLimit,
+    _: PublicRateLimit,
 ):
     """
     Login user with OAuth2 password flow.
@@ -255,7 +255,7 @@ async def logout(
     request_data: RefreshTokenRequest,
     db: DBSession,
     request: Request,
-    limiter: PublicRateLimit,
+    _: PublicRateLimit,
 ):
     """
     Logout user by revoking their refresh token.
@@ -341,7 +341,7 @@ async def expire_user_sessions(
     user_id: UUID,
     db: DBSession,
     request: Request,
-    limiter: PublicRateLimit,
+    _: PublicRateLimit,
 ):
     """
     Expire all sessions for a user (Admin only).

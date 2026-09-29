@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/lib/auth/hooks";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export function LoginPage() {
   const from =
     (location.state as { from?: Location })?.from?.pathname || "/dashboard";
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setIsLoading(true);

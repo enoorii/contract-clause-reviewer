@@ -85,8 +85,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    setStatus("initializing");
-
     try {
       const tokens = await authApi.login({ username, password });
       tokenStorage.setAccessToken(tokens.access_token);

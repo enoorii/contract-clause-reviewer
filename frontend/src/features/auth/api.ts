@@ -41,7 +41,7 @@ export async function logout(refreshToken: string): Promise<void> {
   const payload: RefreshTokenRequest = {
     refresh_token: refreshToken,
   };
-  return api.post<void>("/api/v1/auth/logout", payload, { skipAuth: true });
+  return api.post<void>("/api/v1/auth/logout", payload);
 }
 
 /**

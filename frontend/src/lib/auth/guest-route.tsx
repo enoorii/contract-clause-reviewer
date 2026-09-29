@@ -1,13 +1,8 @@
-import { Navigate, useLocation } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "./hooks";
 import { Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
 
-interface GuestRouteProps {
-  children: ReactNode;
-}
-
-export function GuestRoute({ children }: GuestRouteProps) {
+export function GuestRoute() {
   const { status } = useAuth();
   const location = useLocation();
 
@@ -20,12 +15,10 @@ export function GuestRoute({ children }: GuestRouteProps) {
   }
 
   if (status === "authenticated") {
-    // If they came from a specific page, send them back there, otherwise dashboard
     const from =
       (location.state as { from?: Location })?.from?.pathname || "/dashboard";
     return <Navigate to={from} replace />;
   }
 
-  // If unauthenticated, render the login page
-  return <>{children}</>;
+  return <Outlet />;
 }

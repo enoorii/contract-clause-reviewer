@@ -23,14 +23,9 @@ export function AppRoutes() {
 
       {/* Public routes */}
       <Route element={<PublicLayout />}>
-        <Route
-          path="/login"
-          element={
-            <GuestRoute>
-              <LoginPage />
-            </GuestRoute>
-          }
-        />
+        <Route element={<GuestRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+        </Route>
       </Route>
 
       {/* Protected routes - RequireAuth wraps everything inside */}
