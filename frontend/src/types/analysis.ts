@@ -68,7 +68,7 @@ export interface AnalysisListParams {
 // Pydantic: AnalysisStatusResponse (after our status-endpoint refactor)
 // NOTE: Pydantic serializes None fields as null by default, so
 // `analysis` and `error` are always present on the wire.
-export interface AnalysisTaskStatusResponse {
+export interface AnalysisStatusResponse {
   task_id: string;
   status: TaskStatus;
   analysis: AnalysisDetailed | null; // set only when status === "completed"
@@ -77,6 +77,6 @@ export interface AnalysisTaskStatusResponse {
 
 // Response of POST /api/v1/analysis/analyze.
 // Backend currently returns an untyped object; actual payload is { task_id }.
-export interface AnalysisTaskCreatedResponse {
+export interface AnalysisCreateResponse {
   task_id: string;
 }

@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router";
 import AppShell from "@/components/layout/app-shell";
 import { PublicLayout } from "@/components/layout/public-layout";
 import { AnalysisDetailPage } from "@/pages/analysis/analysis-detail-page";
+import { AnalysisStatusPage } from "./pages/analysis/analysis-status-page";
 import { NewAnalysisPage } from "@/pages/analysis/new-analysis-page";
 import { LoginPage } from "@/pages/auth/login-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
@@ -33,6 +34,10 @@ export function AppRoutes() {
         <Route element={<AppShell />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/analysis/new" element={<NewAnalysisPage />} />
+          <Route
+            path="/analysis/status/:taskId"
+            element={<AnalysisStatusPage />}
+          />
           <Route
             path="/analysis/:analysisId"
             element={<AnalysisDetailPage />}

@@ -1,5 +1,12 @@
+// src/pages/analysis/analysis-detail-page.tsx
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { AlertCircle } from "lucide-react";
 
+import { getAnalysis } from "@/features/analysis/api";
+import { HttpError, NetworkError } from "@/lib/api/types";
+import type { AnalysisDetailed, RiskLevel } from "@/types/analysis";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +16,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getMockAnalysisDetail } from "@/lib/mock-data";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import type { RiskLevel } from "@/types";
 
-// Risk colors are domain-specific (green→red), not part of the semantic
-// theme palette, so hardcoded color classes are appropriate here.
 function riskBadgeClass(level: RiskLevel): string {
   switch (level) {
     case "low":
@@ -28,23 +32,111 @@ function riskBadgeClass(level: RiskLevel): string {
   }
 }
 
+/**
+ * Route component. Reads the URL param, validates it, and hands off to a
+ * keyed view. Navigating from /analysis/1 to /analysis/2 changes the key,
+ * which remounts the view with fresh state — no manual state reset needed.
+ *
+ * Rationale: within a single mount, the URL param never changes on its own;
+ * React Router reuses the same component instance across param changes. The
+ * `key` prop tells React "this is a different resource, treat it as a new
+ * component instance."
+ */
 export function AnalysisDetailPage() {
-  // URL params are ALWAYS strings, so we convert to number.
   const { analysisId } = useParams();
   const id = Number(analysisId);
-  const analysis = getMockAnalysisDetail(id);
+  const isValidId = Number.isInteger(id) && id > 0;
 
-  // Type narrowing: handles /analysis/999 or /analysis/not-a-number
-  if (!analysis) {
+  if (!isValidId) {
     return (
       <div className="p-6 md:p-8">
         <h2 className="text-2xl font-bold tracking-tight">
           Analysis not found
         </h2>
         <p className="mt-1 text-muted-foreground">
-          No analysis exists with id{" "}
-          <span className="font-mono">{analysisId}</span>.
+          Invalid analysis id: <span className="font-mono">{analysisId}</span>.
         </p>
+        <Button className="mt-4" render={<Link to="/dashboard" />}>
+          Back to dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  return <AnalysisDetailView key={id} analysisId={id} />;
+}
+
+interface AnalysisDetailViewProps {
+  analysisId: number;
+}
+
+/**
+ * Stateful view for a single analysis. Because the parent keys this on
+ * analysisId, every navigation to a different analysis is a fresh mount
+ * with clean state — the effect no longer needs to reset anything.
+ *
+ * The only setState calls are inside the async IIFE (after an await), which
+ * is the legitimate use case the eslint rule permits.
+ */
+function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
+  const [analysis, setAnalysis] = useState<AnalysisDetailed | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const data = await getAnalysis(analysisId);
+        if (cancelled) return;
+        setAnalysis(data);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof HttpError
+            ? err.status === 404
+              ? "Analysis not found."
+              : err.message
+            : err instanceof NetworkError
+              ? err.message
+              : "Failed to load analysis.",
+        );
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analysisId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6 md:p-8">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-40 w-full" />
+      </div>
+    );
+  }
+
+  if (error || !analysis) {
+    return (
+      <div className="p-6 md:p-8">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error ?? "Analysis not found."}</AlertDescription>
+        </Alert>
+        {/* TEMP DIAGNOSTIC */}
+        <pre className="mt-4 rounded bg-muted p-4 text-xs overflow-auto">
+          {JSON.stringify(
+            { error, hasAnalysis: Boolean(analysis), analysisId },
+            null,
+            2,
+          )}
+        </pre>
         <Button className="mt-4" render={<Link to="/dashboard" />}>
           Back to dashboard
         </Button>
