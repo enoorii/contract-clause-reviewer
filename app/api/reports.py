@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse
 from starlette.responses import RedirectResponse
 
-from app.api.deps import DBSession
+from app.api.deps import ActiveUser, DBSession
 from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.dependencies import ActiveUserAnalysisRateLimit
 from app.repositories.analysis_repositories import get_analysis_by_report_task_id
@@ -24,9 +24,10 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 @router.post("/{analysis_id}", response_model=dict)
 async def generate_report(
     analysis_id: int,
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUser,
     db: DBSession,
     request: Request,
+    _: ActiveUserAnalysisRateLimit,
 ):
     """Queue report generation for a specific analysis."""
     analysis = await get_analysis_detail(analysis_id=analysis_id, db=db)
@@ -79,8 +80,9 @@ async def generate_report(
 )
 async def get_report_status_endpoint(
     task_id: str,
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUser,
     db: DBSession,
+    _: ActiveUserAnalysisRateLimit,
 ):
     """Check status of report generation task."""
     # Verify ownership
@@ -137,8 +139,9 @@ async def get_report_status_endpoint(
 @router.get("/download/{analysis_id}")
 async def download_report(
     analysis_id: int,
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUser,
     db: DBSession,
+    _: ActiveUserAnalysisRateLimit,
 ):
     """
     Download an already generated report.

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pwdlib.exceptions import UnknownHashError
 
-from app.api.deps import CurrrentUser
+from app.api.deps import AdminUser, CurrrentUser
 from app.core.exceptions import AuthenticationError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
@@ -337,11 +337,11 @@ async def logout(
 
 @router.post("/sessions/expire/{user_id}")
 async def expire_user_sessions(
-    admin: AdminRateLimit,
+    admin: AdminUser,
     user_id: UUID,
     db: DBSession,
     request: Request,
-    _: PublicRateLimit,
+    _: AdminRateLimit,
 ):
     """
     Expire all sessions for a user (Admin only).

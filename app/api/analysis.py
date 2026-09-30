@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
+from app.api.deps import ActiveUser
 from app.core.filters.analysis import AnalysisFilters
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
@@ -35,9 +36,10 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 @router.post("/analyze", response_model=dict)
 async def analyze_document(
     *,
-    user: ActiveUserAnalysisRateLimit,
+    user: ActiveUser,
     analysis_data: AnalysisCreate,
     request: Request,
+    _: ActiveUserAnalysisRateLimit,
 ):
     """Queue document analysis as Celery task."""
     client_ip = request.client.host if request.client else None
@@ -80,8 +82,9 @@ async def analyze_document(
 @router.get("/status/{task_id}", response_model=AnalysisStatusResponse)
 async def get_analysis_status_endpoint(
     task_id: str,
-    user: ActiveUserRateLimit,
+    user: ActiveUser,
     db: DBSession,
+    _: ActiveUserRateLimit,
 ):
     # Verify ownership
     analysis = await get_analysis_by_task_id_repo(task_id, db)
@@ -123,9 +126,10 @@ async def get_analysis_status_endpoint(
 
 @router.get("", response_model=PaginatedResponse[AnalysisSummaryResponse])
 async def list_analyses(
-    user: ActiveUserRateLimit,
+    user: ActiveUser,
     db: DBSession,
     filters: Annotated[AnalysisFilters, Query()],
+    _: ActiveUserRateLimit,
 ):
     """List all analyses for the current user."""
     result = await get_user_analyses(user_id=user.id, db=db, filters=filters)
@@ -135,8 +139,9 @@ async def list_analyses(
 @router.get("/{analysis_id}", response_model=AnalysisDetailedResponse)
 async def get_analysis(
     analysis_id: int,
-    user: ActiveUserRateLimit,
+    user: ActiveUser,
     db: DBSession,
+    _: ActiveUserRateLimit,
 ):
     """Get detailed analysis by ID (only if owned by current user)."""
     analysis = await get_analysis_detail(analysis_id=analysis_id, db=db)
@@ -150,8 +155,9 @@ async def get_analysis(
 @router.delete("/{analysis_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_analysis(
     analysis_id: int,
-    user: ActiveUserRateLimit,
+    user: ActiveUser,
     db: DBSession,
+    _: ActiveUserRateLimit,
 ):
     """Delete analysis by ID (only if owned by current user)."""
     analysis = await get_analysis_detail(analysis_id=analysis_id, db=db)
