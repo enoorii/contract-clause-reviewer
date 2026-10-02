@@ -79,10 +79,17 @@ class TokenStore(Protocol):
 async def create_access_token(
     username: str, secret_key: str, expiration_minutes: int
 ) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(minutes=expiration_minutes)
+    now = datetime.now(timezone.utc)
+    exp = now + timedelta(minutes=expiration_minutes)
     jti = str(uuid4())
     return jwt.encode(
-        {"sub": username, "type": TokenType.ACCESS, "exp": exp, "jti": jti},
+        {
+            "sub": username,
+            "type": TokenType.ACCESS,
+            "iat": now,
+            "exp": exp,
+            "jti": jti,
+        },
         secret_key,
         algorithm="HS256",
     )
