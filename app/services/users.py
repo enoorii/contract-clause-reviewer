@@ -6,7 +6,7 @@ from sqlalchemy.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from app.core.enums import Role
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import AuthenticationError, WrongPasswordError
 from app.core.security import (
     hash_password_async,
     verify_password_async,
@@ -148,7 +148,7 @@ async def change_password_by_id(
     if not await verify_password_async(
         password=password_data.old_password, password_hash=user.password_hash
     ):
-        raise AuthenticationError("Your old password is wrong.")
+        raise WrongPasswordError("Your old password is wrong.")
 
     user.sqlmodel_update(
         {

@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from app.api.deps import ActiveUser, AdminUser, CurrrentUser
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import AuthenticationError, WrongPasswordError
 from app.db.database import DBSession
 from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.dependencies import (
@@ -244,7 +244,29 @@ async def change_own_password(
             password_data=password_data,
             db=db,
         )
+    except WrongPasswordError as e:
+        # 400: the request is authenticated, but the body is wrong.
+        # A 401 here would be interpreted by frontends as "expired token."
+        logger.warning(
+            "Wrong old password for user %s: %s",
+            user.username,
+            str(e),
+        )
+        logger.user_action(
+            action="PASSWORD_CHANGE",
+            username=user.username,
+            status="FAILED",
+            request=request,
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     except AuthenticationError as e:
+        # 401: the user lookup itself failed. Should be unreachable in
+        # practice because CurrrentUser already verified the user exists,
+        # but kept as a defensive branch.
         logger.error(
             "Authentication error changing password for user %s: %s",
             user.username,
@@ -298,7 +320,6 @@ async def change_own_password(
             detail="Failed to change password",
         )
 
-    # Success logs after try block
     logger.info(
         "User %s (ID: %s) successfully changed own password",
         user.username,
@@ -311,7 +332,7 @@ async def change_own_password(
         request=request,
     )
 
-    return {"id": auth_user.id, "username": auth_user.username}
+    return auth_user
 
 
 # ===== ADMIN ENDPOINTS =====

@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router";
 import { AlertCircle } from "lucide-react";
 
 import { getAnalysis } from "@/features/analysis/api";
+import { ReportWidget } from "@/features/reports/components/report-widget";
 import { HttpError, NetworkError } from "@/lib/api/types";
 import type { AnalysisDetailed, RiskLevel } from "@/types/analysis";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -129,14 +130,6 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error ?? "Analysis not found."}</AlertDescription>
         </Alert>
-        {/* TEMP DIAGNOSTIC */}
-        <pre className="mt-4 rounded bg-muted p-4 text-xs overflow-auto">
-          {JSON.stringify(
-            { error, hasAnalysis: Boolean(analysis), analysisId },
-            null,
-            2,
-          )}
-        </pre>
         <Button className="mt-4" render={<Link to="/dashboard" />}>
           Back to dashboard
         </Button>
@@ -159,6 +152,9 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
           </Badge>
         </div>
       </div>
+
+      {/* Report generation widget — self-contained, owns its own async state */}
+      <ReportWidget analysisId={analysis.id} />
 
       {/* Document summary */}
       <Card>
