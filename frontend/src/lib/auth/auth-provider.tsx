@@ -2,6 +2,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type PropsWithChildren,
 } from "react";
 import { AuthContext, type AuthStatus } from "./auth-context";
@@ -115,13 +116,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const value = {
-    user,
-    status,
-    isLoading: status === "initializing",
-    login,
-    logout,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      status,
+      isLoading: status === "initializing",
+      login,
+      logout,
+    }),
+    [user, status, login, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
