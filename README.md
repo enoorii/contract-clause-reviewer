@@ -578,13 +578,14 @@ OpenAPI documentation is available at:
 http://localhost:9000/docs
 ```
 
-## Generate Alembic Migrations
+## Generate Alembic Migrations And Applying Them
 
 To do this you should run database using `docker-compose.test.yaml` and then run alembic.
 
 ```text
 docker compose -f docker-compose.test.yaml --env-file .env.test up -d
 ENV_FILE=.env.test uv run alembic revision --autogenerate -m "message"
+ENV_FILE=.env.test uv run alembic upgrade head
 ```
 
 ---

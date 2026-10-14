@@ -547,6 +547,7 @@ def get_logger(name: str = "app") -> AuditLogger:
     return cast(AuditLogger, logging.getLogger(logger_name))
 
 
+_logger = get_logger()
 # =============================================================================
 # CONVENIENCE FUNCTIONS
 # =============================================================================
@@ -559,7 +560,7 @@ def log_user_action(
 ) -> None:
     """Backward-compatible user action logger."""
 
-    logger_obj = get_logger("app")
+    logger_obj = _logger
 
     logger_obj.user_action(
         action,
@@ -575,7 +576,7 @@ def log_security_event(
 ) -> None:
     """Log a security event."""
 
-    logger_obj = get_logger("app")
+    logger_obj = _logger
 
     if username:
         logger_obj.warning(
@@ -596,7 +597,7 @@ def log_db_query(
     """Log database queries in development mode."""
 
     if DEV_MODE:
-        logger_obj = get_logger("app")
+        logger_obj = _logger
 
         logger_obj.debug(f"DB_QUERY: {duration:.3f}s - {query[:100]}...")
 
@@ -604,7 +605,7 @@ def log_db_query(
 def log_request_start(request: Request) -> None:
     """Log the start of an HTTP request."""
 
-    logger_obj = get_logger("app")
+    logger_obj = _logger
 
     logger_obj.info(
         f"Request started | "
@@ -616,14 +617,12 @@ def log_request_start(request: Request) -> None:
 
 def log_request_completed(
     request: Request,
-    response,
+    status_code: int | None,
     duration: float,
 ) -> None:
     """Log successful HTTP request completion."""
 
-    logger_obj = get_logger("app")
-
-    status_code = getattr(response, "status_code", None)
+    logger_obj = _logger
 
     logger_obj.info(
         f"Request completed | "
@@ -642,7 +641,7 @@ def log_request_error(
 ) -> None:
     """Log an HTTP request error."""
 
-    logger_obj = get_logger("app")
+    logger_obj = _logger
 
     logger_obj.error(
         f"Request failed | "

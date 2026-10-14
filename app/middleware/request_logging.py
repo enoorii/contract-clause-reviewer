@@ -1,7 +1,7 @@
 # app/middleware/request_log.py
 from time import perf_counter
 
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.infrastructure.logging import (
@@ -61,12 +61,7 @@ class RequestLogMiddleware:
             await self.app(scope, receive, send_wrapper)
             duration = perf_counter() - start
 
-            # Reconstruct a minimal Response for the logging layer.
-            response = Response(
-                status_code=status_code or 500,
-                headers=dict(response_headers) if response_headers else None,
-            )
-            log_request_completed(request, response, duration)
+            log_request_completed(request, status_code or 500, duration)
         except Exception as exc:
             duration = perf_counter() - start
             log_request_error(request, exc, duration)
