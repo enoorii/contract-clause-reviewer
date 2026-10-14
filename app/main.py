@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette_cramjam.compression import Compression
+from starlette_cramjam.middleware import CompressionMiddleware
 
 from app.api.analysis import router as analysis_router
 from app.api.auth import router as auth_router
@@ -56,3 +58,12 @@ async def health_check():
 
 # Add middleware
 app.add_middleware(RequestLogMiddleware)
+
+# Compression middleware
+app.add_middleware(
+    CompressionMiddleware,
+    compression=[Compression.br, Compression.gzip],  # Prefer Brotli, fallback to GZip
+    compression_level=2,
+    minimum_size=1000,  # Skip responses smaller than 1KB
+    exclude_mediatype={"application/pdf"},
+)
