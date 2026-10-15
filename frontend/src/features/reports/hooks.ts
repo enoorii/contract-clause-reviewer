@@ -1,91 +1,49 @@
 // src/features/reports/hooks.ts
-import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { getReportStatus } from "./api";
-import { HttpError, NetworkError } from "@/lib/api/types";
 import type { ReportTaskStatusResponse } from "@/types";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_CONSECUTIVE_ERRORS = 3;
 
-interface UseReportStatusResult {
-  status: ReportTaskStatusResponse | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
 /**
  * Polls the status of a Celery report-generation task every 2s until it
- * reaches a terminal state (completed | failed | unknown), or until too
- * many consecutive errors occur.
+ * reaches a terminal state (completed | failed), or until too many
+ * consecutive errors occur.
  *
- * Unlike useAnalysisStatus, this hook does NOT navigate on completion —
- * the report widget stays on the page and renders a download button.
+ * Backed by TanStack Query. The polling logic lives in `refetchInterval`:
+ * returning a number schedules the next poll; returning `false` stops it.
+ * Cancellation, deduplication, and caching are handled by the library.
  *
- * IMPORTANT: consumers should key the component that uses this hook on
- * taskId, so a new task resets internal state without synchronous setState
- * in the effect.
- *
- *   <ReportWidget key={taskId} taskId={taskId} analysisId={id} />
+ * The caller must pass a `taskId`. When it's `undefined`, the query is
+ * disabled and no fetch runs — this is why the hook accepts `undefined`
+ * rather than requiring the caller to conditionally call it.
  */
-export function useReportStatus(
-  taskId: string | undefined,
-): UseReportStatusResult {
-  const [status, setStatus] = useState<ReportTaskStatusResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(taskId));
-  const consecutiveErrorsRef = useRef(0);
+export function useReportStatus(taskId: string | undefined) {
+  return useQuery<ReportTaskStatusResponse>({
+    queryKey: ["report-status", taskId],
+    queryFn: () => getReportStatus(taskId!),
+    enabled: Boolean(taskId),
+    // Each poll is a single attempt; refetchInterval handles the retries.
+    // Without this, TanStack Query would retry a failed poll up to the
+    // global `retry` config before incrementing fetchFailureCount.
+    retry: false,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
 
-  useEffect(() => {
-    if (!taskId) return;
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const poll = async () => {
-      try {
-        const data = await getReportStatus(taskId);
-        if (cancelled) return;
-
-        consecutiveErrorsRef.current = 0;
-        setStatus(data);
-        setError(null);
-        setIsLoading(false);
-
-        if (
-          data.status === "completed" ||
-          data.status === "failed"
-        ) {
-          return; // terminal — stop polling
-        }
-      } catch (err) {
-        if (cancelled) return;
-
-        consecutiveErrorsRef.current += 1;
-        setError(
-          err instanceof HttpError
-            ? err.message
-            : err instanceof NetworkError
-              ? err.message
-              : "Failed to fetch report status.",
-        );
-
-        if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-          setIsLoading(false);
-          return;
-        }
+      // Stop polling on terminal states.
+      if (status === "completed" || status === "failed") {
+        return false;
       }
 
-      timer = setTimeout(poll, POLL_INTERVAL_MS);
-    };
+      // Stop after too many consecutive failures so we don't hammer a
+      // broken backend indefinitely.
+      if ((query.state.fetchFailureCount ?? 0) >= MAX_CONSECUTIVE_ERRORS) {
+        return false;
+      }
 
-    poll();
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [taskId]);
-
-  return { status, error, isLoading };
+      return POLL_INTERVAL_MS;
+    },
+  });
 }

@@ -1,5 +1,6 @@
 // src/features/reports/components/report-widget.tsx
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   AlertCircle,
   CheckCircle2,
@@ -25,92 +26,73 @@ interface ReportWidgetProps {
   analysisId: number;
 }
 
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof HttpError || err instanceof NetworkError) {
+    return err.message;
+  }
+  return fallback;
+}
+
 export function ReportWidget({ analysisId }: ReportWidgetProps) {
+  // The only local state: which task we're polling. Set when the backend
+  // queues a task. Cleared on "Start over".
   const [taskId, setTaskId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-  // True when the backend told us the report already exists (303 redirect)
-  // and we successfully downloaded it via the fallback path.
-  const [reportReady, setReportReady] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const {
-    status,
-    isLoading: isPollLoading,
-    error: pollError,
-  } = useReportStatus(taskId ?? undefined);
-
-  // ─── Actions ────────────────────────────────────────────────────────
-
-  async function handleGenerate() {
-    setIsSubmitting(true);
-    setGenerateError(null);
-    setDownloadError(null);
-
-    try {
-      const result = await generateReport(analysisId);
-
-      if (result.status === "ready") {
-        // Report already existed — mark it ready and download immediately.
-        setReportReady(true);
-        try {
-          const blob = await downloadReport(analysisId);
-          triggerBrowserDownload(blob, `report-${analysisId}.pdf`);
-        } catch {
-          setDownloadError(
-            "Report is ready, but the download failed. Please click Download PDF.",
-          );
-        }
-      } else {
-        // Generation was queued — start polling.
-        setTaskId(result.task_id);
-      }
-    } catch (err) {
-      setGenerateError(
-        err instanceof HttpError || err instanceof NetworkError
-          ? err.message
-          : "Failed to start report generation.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleDownload() {
-    setIsDownloading(true);
-    setDownloadError(null);
-
-    try {
-      const blob = await downloadReport(analysisId);
+  // ── Mutations ───────────────────────────────────────────────────────
+  // Download is defined first because generate's onSuccess may invoke it.
+  const downloadMutation = useMutation({
+    mutationKey: ["reports", "download", analysisId],
+    mutationFn: () => downloadReport(analysisId),
+    onSuccess: (blob) => {
       triggerBrowserDownload(blob, `report-${analysisId}.pdf`);
-    } catch {
-      setDownloadError("Failed to download the report. Please try again.");
-    } finally {
-      setIsDownloading(false);
-    }
-  }
+    },
+  });
 
+  const generateMutation = useMutation({
+    mutationKey: ["reports", "generate", analysisId],
+    mutationFn: () => generateReport(analysisId),
+    onSuccess: (data) => {
+      if (data.status === "queued") {
+        // Start polling.
+        setTaskId(data.task_id);
+      } else {
+        // Report already exists — download immediately.
+        downloadMutation.mutate();
+      }
+    },
+  });
+
+  // ── Polling ─────────────────────────────────────────────────────────
+  const statusQuery = useReportStatus(taskId ?? undefined);
+
+  // ── Derived state ───────────────────────────────────────────────────
+  const reportAlreadyExists = generateMutation.data?.status === "ready";
+  const pollingCompleted = statusQuery.data?.status === "completed";
+  const isReportReady = reportAlreadyExists || pollingCompleted;
+
+  const isFailed = statusQuery.data?.status === "failed";
+  const isGenerating =
+    Boolean(taskId) && !isReportReady && !isFailed && !statusQuery.error;
+
+  const generateError = generateMutation.isError
+    ? errorMessage(generateMutation.error, "Failed to start report generation.")
+    : null;
+
+  const downloadError = downloadMutation.isError
+    ? errorMessage(
+        downloadMutation.error,
+        "Failed to download the report. Please try again.",
+      )
+    : null;
+
+  // ── Handlers ────────────────────────────────────────────────────────
   function handleRetry() {
     setTaskId(null);
-    setGenerateError(null);
-    setDownloadError(null);
-    setReportReady(false);
+    generateMutation.reset();
+    downloadMutation.reset();
   }
 
-  // ─── Derived state ──────────────────────────────────────────────────
-
-  const isCompleted = status?.status === "completed" || reportReady;
-  const isFailed = status?.status === "failed";
-  const isGenerating =
-    Boolean(taskId) &&
-    !isCompleted &&
-    !isFailed &&
-    !pollError &&
-    !generateError;
-
-  // ─── Render ─────────────────────────────────────────────────────────
-
+  // ── Render ──────────────────────────────────────────────────────────
   return (
     <Card>
       <CardHeader>
@@ -124,16 +106,19 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Idle — no task started, no completed report in state */}
-        {!taskId && !isSubmitting && !generateError && !reportReady && (
-          <Button onClick={handleGenerate}>
-            <FileText className="mr-2 h-4 w-4" />
-            Generate Report
-          </Button>
-        )}
+        {/* Idle — nothing started, no completed report, no errors */}
+        {!taskId &&
+          !generateMutation.isPending &&
+          !generateError &&
+          !reportAlreadyExists && (
+            <Button onClick={() => generateMutation.mutate()}>
+              <FileText className="mr-2 h-4 w-4" />
+              Generate Report
+            </Button>
+          )}
 
-        {/* Submitting the generate request */}
-        {isSubmitting && (
+        {/* Generating — the POST is in flight */}
+        {generateMutation.isPending && (
           <Button disabled>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Starting...
@@ -147,7 +132,7 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{generateError}</AlertDescription>
             </Alert>
-            <Button onClick={handleGenerate} variant="outline">
+            <Button onClick={() => generateMutation.mutate()} variant="outline">
               Try again
             </Button>
           </>
@@ -159,9 +144,9 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             <div className="space-y-0.5">
               <p className="text-sm font-medium">
-                {!status ||
-                status.status === "pending" ||
-                status.status === "unknown"
+                {!statusQuery.data ||
+                statusQuery.data.status === "pending" ||
+                statusQuery.data.status === "unknown"
                   ? "Queued"
                   : "Generating report"}
               </p>
@@ -172,12 +157,17 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
           </div>
         )}
 
-        {/* Polling error — after 3 consecutive failures */}
-        {taskId && pollError && !isCompleted && !isFailed && (
+        {/* Polling error — after MAX_CONSECUTIVE_ERRORS failures */}
+        {taskId && statusQuery.error && !isReportReady && !isFailed && (
           <>
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{pollError}</AlertDescription>
+              <AlertDescription>
+                {errorMessage(
+                  statusQuery.error,
+                  "Could not fetch report status.",
+                )}
+              </AlertDescription>
             </Alert>
             <Button onClick={handleRetry} variant="outline">
               Start over
@@ -191,7 +181,7 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {status?.error ?? "Report generation failed."}
+                {statusQuery.data?.error ?? "Report generation failed."}
               </AlertDescription>
             </Alert>
             <Button onClick={handleRetry} variant="outline">
@@ -201,14 +191,17 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
         )}
 
         {/* Completed — ready to download */}
-        {isCompleted && (
+        {isReportReady && (
           <>
             <Alert>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription>Your report is ready.</AlertDescription>
             </Alert>
-            <Button onClick={handleDownload} disabled={isDownloading}>
-              {isDownloading ? (
+            <Button
+              onClick={() => downloadMutation.mutate()}
+              disabled={downloadMutation.isPending}
+            >
+              {downloadMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Downloading...
@@ -230,7 +223,7 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
         )}
 
         {/* Loading the very first status response */}
-        {isPollLoading && !status && !isSubmitting && taskId && (
+        {statusQuery.isLoading && taskId && !generateMutation.isPending && (
           <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-4">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Checking status...</p>
