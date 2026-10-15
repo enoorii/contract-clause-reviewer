@@ -10,8 +10,17 @@ export interface ReportTaskStatusResponse {
   error: string | null; // set only when status === "failed"
 }
 
-// Response of POST /api/v1/reports/{analysis_id}.
-// Backend currently returns an untyped object; actual payload is { task_id }.
-export interface ReportTaskCreatedResponse {
-  task_id: string;
-}
+/**
+ * Response from POST /reports/{analysis_id}.
+ *
+ * Two outcomes, discriminated by `status`:
+ *   - "queued": a new task was scheduled → poll `status_url`.
+ *   - "ready":  the report already exists → download `download_url`.
+ *
+ * Kept separate from `ReportTaskStatusResponse` (the polling shape)
+ * because the two endpoints describe different contracts: one is the
+ * outcome of a *decision*, the other the state of a *task*.
+ */
+export type GenerateReportResponse =
+  | { status: "queued"; task_id: string; status_url: string }
+  | { status: "ready"; download_url: string };

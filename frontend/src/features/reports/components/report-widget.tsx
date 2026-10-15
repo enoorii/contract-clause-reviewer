@@ -50,22 +50,28 @@ export function ReportWidget({ analysisId }: ReportWidgetProps) {
 
     try {
       const result = await generateReport(analysisId);
-      setTaskId(result.task_id);
-    } catch (err) {
-      // The "already exists" case: backend returned 303 → fetch followed
-      // to the PDF → our JSON parser threw. Fall back to direct download.
-      // If it succeeds, the report was already there.
-      try {
-        const blob = await downloadReport(analysisId);
-        triggerBrowserDownload(blob, `report-${analysisId}.pdf`);
+
+      if (result.status === "ready") {
+        // Report already existed — mark it ready and download immediately.
         setReportReady(true);
-      } catch {
-        setGenerateError(
-          err instanceof HttpError || err instanceof NetworkError
-            ? err.message
-            : "Failed to start report generation.",
-        );
+        try {
+          const blob = await downloadReport(analysisId);
+          triggerBrowserDownload(blob, `report-${analysisId}.pdf`);
+        } catch {
+          setDownloadError(
+            "Report is ready, but the download failed. Please click Download PDF.",
+          );
+        }
+      } else {
+        // Generation was queued — start polling.
+        setTaskId(result.task_id);
       }
+    } catch (err) {
+      setGenerateError(
+        err instanceof HttpError || err instanceof NetworkError
+          ? err.message
+          : "Failed to start report generation.",
+      );
     } finally {
       setIsSubmitting(false);
     }

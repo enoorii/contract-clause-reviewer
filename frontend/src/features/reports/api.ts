@@ -1,20 +1,22 @@
 import { api } from "@/lib/api/client";
 import { tokenStorage } from "@/lib/auth/storage";
-import type {
-  ReportTaskCreatedResponse,
-  ReportTaskStatusResponse,
-} from "@/types";
+import type { GenerateReportResponse, ReportTaskStatusResponse } from "@/types";
+
+// ─── Response types ──────────────────────────────────────────────────
 
 // ─── Async Task Operations ───────────────────────────────────────────
 
 /**
  * Triggers report generation for an analysis.
- * Returns a task_id for polling. The PDF is generated asynchronously via Celery.
+ *
+ * Returns a discriminated union:
+ * - { status: "queued", task_id, status_url } — generation was queued.
+ * - { status: "ready", download_url }         — report already existed.
  */
 export async function generateReport(
   analysisId: number,
-): Promise<ReportTaskCreatedResponse> {
-  return api.post<ReportTaskCreatedResponse>(`/api/v1/reports/${analysisId}`);
+): Promise<GenerateReportResponse> {
+  return api.post<GenerateReportResponse>(`/api/v1/reports/${analysisId}`);
 }
 
 /**

@@ -2,14 +2,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import FileResponse
-from starlette.responses import RedirectResponse
 
 from app.api.deps import ActiveUser, DBSession
 from app.infrastructure.logging import get_logger
 from app.infrastructure.redis.dependencies import ActiveUserAnalysisRateLimit
 from app.repositories.analysis_repositories import get_analysis_by_report_task_id
 from app.schemas.base import TaskStatus
-from app.schemas.report import ReportStatusResponse
+from app.schemas.report import ReportGenerateResponse, ReportStatusResponse
 from app.services.analysis import get_analysis_detail
 from app.services.reports import (
     get_report_status,
@@ -21,7 +20,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.post("/{analysis_id}", response_model=dict)
+@router.post("/{analysis_id}", response_model=ReportGenerateResponse)
 async def generate_report(
     analysis_id: int,
     user: ActiveUser,
@@ -29,7 +28,12 @@ async def generate_report(
     request: Request,
     _: ActiveUserAnalysisRateLimit,
 ):
-    """Queue report generation for a specific analysis."""
+    """Queue report generation for a specific analysis.
+
+    Two outcomes, both JSON — no redirects:
+      - { status: "ready",  download_url }            → report already exists.
+      - { status: "queued", task_id, status_url }     → new task was queued.
+    """
     analysis = await get_analysis_detail(analysis_id=analysis_id, db=db)
     if analysis is None:
         raise HTTPException(
@@ -49,10 +53,10 @@ async def generate_report(
         and Path(analysis.report_path).exists()
     ):
         logger.info("Report already exists for analysis %d", analysis_id)
-        # Redirect to download endpoint
-        return RedirectResponse(
-            url=f"/api/v1/reports/download/{analysis_id}",
-            status_code=303,  # See Other - forces GET to the download endpoint
+        # No redirect — the JSON body tells the client the report is ready.
+        return ReportGenerateResponse(
+            status="ready",
+            download_url=f"/api/v1/reports/download/{analysis_id}",
         )
 
     # Queue new generation
@@ -67,11 +71,11 @@ async def generate_report(
         metadata={"analysis_id": analysis_id, "task_id": task_id},
     )
 
-    return {
-        "task_id": task_id,
-        "status": "queued",
-        "status_url": f"/api/reports/status/{task_id}",
-    }
+    return ReportGenerateResponse(
+        status="queued",
+        task_id=task_id,
+        status_url=f"/api/reports/status/{task_id}",
+    )
 
 
 @router.get(

@@ -66,4 +66,5 @@ app.add_middleware(
     compression_level=2,
     minimum_size=1000,  # Skip responses smaller than 1KB
     exclude_mediatype={"application/pdf"},
+    exclude_path={r"^/api/v1/reports/download/.*"},
 )
