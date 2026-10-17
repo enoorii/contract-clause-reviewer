@@ -95,7 +95,7 @@ export function EditUserDialog({ user, onOpenChange }: EditUserDialogProps) {
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit user</DialogTitle>
           <DialogDescription>

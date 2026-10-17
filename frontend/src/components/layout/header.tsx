@@ -53,8 +53,8 @@ export function Header() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-4">
-          <span className="hidden text-sm text-muted-foreground sm:inline">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <span className="hidden text-sm text-muted-foreground sm:inline truncate">
             {user.username}
           </span>
 

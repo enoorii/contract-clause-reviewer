@@ -91,7 +91,7 @@ export function ResetPasswordDialog({
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Reset password</DialogTitle>
           <DialogDescription>

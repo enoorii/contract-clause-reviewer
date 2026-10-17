@@ -87,7 +87,7 @@ export function CreateUserDialog({ onOpenChange }: CreateUserDialogProps) {
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create user</DialogTitle>
           <DialogDescription>

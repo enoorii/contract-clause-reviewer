@@ -103,7 +103,8 @@ export function AnalysisDetailPage() {
 
   return (
     <div className="space-y-6 p-6 md:p-8">
-      <div>
+      {/* Page header — add min-w-0 so long titles can truncate */}
+      <div className="min-w-0">
         <PageHeader
           title={analysis.title}
           description={analysis.description ?? undefined}
@@ -123,7 +124,9 @@ export function AnalysisDetailPage() {
           <CardTitle className="text-lg">Document Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm leading-relaxed">{analysis.document_summary}</p>
+          <p className="text-sm leading-relaxed wrap-break-word">
+            {analysis.document_summary}
+          </p>
         </CardContent>
       </Card>
 
@@ -135,7 +138,9 @@ export function AnalysisDetailPage() {
           <CardContent>
             <ul className="list-disc space-y-1 pl-5 text-sm">
               {analysis.recommendations.map((rec) => (
-                <li key={rec}>{rec}</li>
+                <li key={rec} className="wrap-break-word">
+                  {rec}
+                </li>
               ))}
             </ul>
           </CardContent>
@@ -154,18 +159,19 @@ export function AnalysisDetailPage() {
           analysis.clauses.map((clause) => (
             <Card key={clause.id}>
               <CardHeader>
+                {/* min-w-0 allows the inner div to shrink; badge stays pinned */}
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-base">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base wrap-break-word">
                       {clause.clause_type}
                     </CardTitle>
-                    <CardDescription className="mt-1">
+                    <CardDescription className="mt-1 wrap-break-word">
                       {clause.summary}
                     </CardDescription>
                   </div>
                   <Badge
                     className={cn(
-                      "capitalize",
+                      "shrink-0 capitalize",
                       riskBadgeClass(clause.risk_level),
                     )}
                   >
@@ -178,13 +184,12 @@ export function AnalysisDetailPage() {
                   <p className="text-sm font-medium">Key terms</p>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {clause.key_terms.map((term) => (
-                      <Badge
+                      <span
                         key={term}
-                        variant="outline"
-                        className="font-normal"
+                        className="inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-xs font-normal wrap-break-word"
                       >
                         {term}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -192,7 +197,9 @@ export function AnalysisDetailPage() {
                   <p className="text-sm font-medium">Suggested actions</p>
                   <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                     {clause.suggested_actions.map((action) => (
-                      <li key={action}>{action}</li>
+                      <li key={action} className="wrap-break-word">
+                        {action}
+                      </li>
                     ))}
                   </ul>
                 </div>
