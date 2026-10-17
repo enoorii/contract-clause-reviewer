@@ -1,12 +1,12 @@
 // src/pages/analysis/analysis-detail-page.tsx
-import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 
 import { getAnalysis } from "@/features/analysis/api";
 import { ReportWidget } from "@/features/reports/components/report-widget";
 import { HttpError, NetworkError } from "@/lib/api/types";
-import type { AnalysisDetailed, RiskLevel } from "@/types/analysis";
+import type { RiskLevel } from "@/types/analysis";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,21 +33,32 @@ function riskBadgeClass(level: RiskLevel): string {
   }
 }
 
-/**
- * Route component. Reads the URL param, validates it, and hands off to a
- * keyed view. Navigating from /analysis/1 to /analysis/2 changes the key,
- * which remounts the view with fresh state — no manual state reset needed.
- *
- * Rationale: within a single mount, the URL param never changes on its own;
- * React Router reuses the same component instance across param changes. The
- * `key` prop tells React "this is a different resource, treat it as a new
- * component instance."
- */
+function analysisErrorMessage(err: unknown): string {
+  if (err instanceof HttpError) {
+    return err.status === 404 ? "Analysis not found." : err.message;
+  }
+  if (err instanceof NetworkError) {
+    return err.message;
+  }
+  return "Failed to load analysis.";
+}
+
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
   const id = Number(analysisId);
   const isValidId = Number.isInteger(id) && id > 0;
 
+  const {
+    data: analysis,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["analysis-detail", id],
+    queryFn: () => getAnalysis(id),
+    enabled: isValidId,
+  });
+
+  // Invalid id — no fetch attempted, show the "not found" UI directly.
   if (!isValidId) {
     return (
       <div className="p-6 md:p-8">
@@ -64,55 +75,6 @@ export function AnalysisDetailPage() {
     );
   }
 
-  return <AnalysisDetailView key={id} analysisId={id} />;
-}
-
-interface AnalysisDetailViewProps {
-  analysisId: number;
-}
-
-/**
- * Stateful view for a single analysis. Because the parent keys this on
- * analysisId, every navigation to a different analysis is a fresh mount
- * with clean state — the effect no longer needs to reset anything.
- *
- * The only setState calls are inside the async IIFE (after an await), which
- * is the legitimate use case the eslint rule permits.
- */
-function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
-  const [analysis, setAnalysis] = useState<AnalysisDetailed | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await getAnalysis(analysisId);
-        if (cancelled) return;
-        setAnalysis(data);
-      } catch (err) {
-        if (cancelled) return;
-        setError(
-          err instanceof HttpError
-            ? err.status === 404
-              ? "Analysis not found."
-              : err.message
-            : err instanceof NetworkError
-              ? err.message
-              : "Failed to load analysis.",
-        );
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [analysisId]);
-
   if (isLoading) {
     return (
       <div className="space-y-6 p-6 md:p-8">
@@ -128,7 +90,9 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
       <div className="p-6 md:p-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error ?? "Analysis not found."}</AlertDescription>
+          <AlertDescription>
+            {error ? analysisErrorMessage(error) : "Analysis not found."}
+          </AlertDescription>
         </Alert>
         <Button className="mt-4" render={<Link to="/dashboard" />}>
           Back to dashboard
@@ -139,7 +103,6 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
 
   return (
     <div className="space-y-6 p-6 md:p-8">
-      {/* Page header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight">{analysis.title}</h2>
         {analysis.description && (
@@ -153,10 +116,8 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
         </div>
       </div>
 
-      {/* Report generation widget — self-contained, owns its own async state */}
       <ReportWidget analysisId={analysis.id} />
 
-      {/* Document summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Document Summary</CardTitle>
@@ -166,7 +127,6 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
         </CardContent>
       </Card>
 
-      {/* Recommendations */}
       {analysis.recommendations.length > 0 && (
         <Card>
           <CardHeader>
@@ -182,7 +142,6 @@ function AnalysisDetailView({ analysisId }: AnalysisDetailViewProps) {
         </Card>
       )}
 
-      {/* Clauses */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Clauses</h3>
         {analysis.clauses.map((clause) => (

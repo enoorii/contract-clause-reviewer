@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 import { useAnalysisStatus } from "@/features/analysis/hooks";
+import { HttpError, NetworkError } from "@/lib/api/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +15,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+function errorMessage(err: unknown): string {
+  if (err instanceof HttpError || err instanceof NetworkError) {
+    return err.message;
+  }
+  return "Failed to fetch status.";
+}
+
 export function AnalysisStatusPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const { status, isLoading, error } = useAnalysisStatus(taskId);
+
+  const { data: status, isLoading, error } = useAnalysisStatus(taskId);
 
   // When the analysis finishes, swap the URL for the persistent resource.
   // `replace: true` keeps the ephemeral task URL out of browser history.
@@ -79,7 +88,7 @@ export function AnalysisStatusPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Could not fetch status</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{errorMessage(error)}</AlertDescription>
             </Alert>
           )}
 

@@ -12,6 +12,7 @@ import { CreateUserDialog } from "@/features/users/components/create-user-dialog
 import { EditUserDialog } from "@/features/users/components/edit-user-dialog";
 import { DeleteUserDialog } from "@/features/users/components/delete-user-dialog";
 import { ResetPasswordDialog } from "@/features/users/components/reset-password-dialog";
+import { HttpError, NetworkError } from "@/lib/api/types";
 import type { Role, User } from "@/types";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -25,10 +26,6 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-/**
- * Discriminated union for which dialog is open. Only one can be active at
- * a time by construction — you can't have "edit" and "delete" both open.
- */
 type ActiveDialog =
   | { kind: "none" }
   | { kind: "create" }
@@ -36,40 +33,33 @@ type ActiveDialog =
   | { kind: "delete"; user: User }
   | { kind: "resetPassword"; user: User };
 
+function listErrorMessage(err: unknown): string {
+  if (err instanceof HttpError || err instanceof NetworkError) {
+    return err.message;
+  }
+  return "Failed to load users.";
+}
+
 export function UsersPage() {
   const { user: currentUser } = useAuth();
 
-  // List state
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
   const [role, setRole] = useState<Role | null>(null);
   const [isActive, setIsActive] = useState<boolean | null>(null);
 
-  // Dialog state
   const [dialog, setDialog] = useState<ActiveDialog>({ kind: "none" });
 
-  // Refetch trigger
-  const [refreshKey, setRefreshKey] = useState(0);
-  const refetch = () => setRefreshKey((k) => k + 1);
-
-  // Debounce the search so we don't fire on every keystroke
   const debouncedSearch = useDebounce(searchInput, 300);
 
-  const { data, isLoading, error } = useUsersList(
-    {
-      page,
-      size,
-      search: debouncedSearch || null,
-      role,
-      is_active: isActive,
-    },
-    refreshKey,
-  );
-
-  // ─── Filter change handlers ────────────────────────────────────────
-  // Any filter change resets to page 1 — otherwise the user might be on
-  // page 5 of a different result set.
+  const { data, isLoading, error } = useUsersList({
+    page,
+    size,
+    search: debouncedSearch || null,
+    role,
+    is_active: isActive,
+  });
 
   function handleSearchChange(value: string) {
     setSearchInput(value);
@@ -89,6 +79,10 @@ export function UsersPage() {
   function handleSizeChange(newSize: number) {
     setSize(newSize);
     setPage(1);
+  }
+
+  function closeDialog() {
+    setDialog({ kind: "none" });
   }
 
   return (
@@ -128,7 +122,7 @@ export function UsersPage() {
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{listErrorMessage(error)}</AlertDescription>
             </Alert>
           )}
 
@@ -161,45 +155,32 @@ export function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* Dialogs — conditionally rendered based on the discriminated union */}
-
       {dialog.kind === "create" && (
-        <CreateUserDialog
-          onOpenChange={(open) => !open && setDialog({ kind: "none" })}
-          onSuccess={refetch}
-        />
+        <CreateUserDialog onOpenChange={closeDialog} />
       )}
 
       {dialog.kind === "edit" && (
         <EditUserDialog
           key={dialog.user.id}
           user={dialog.user}
-          onOpenChange={(open) => !open && setDialog({ kind: "none" })}
-          onSuccess={refetch}
+          onOpenChange={closeDialog}
         />
       )}
 
       {dialog.kind === "delete" && (
-        <DeleteUserDialog
-          user={dialog.user}
-          onOpenChange={(open) => !open && setDialog({ kind: "none" })}
-          onSuccess={refetch}
-        />
+        <DeleteUserDialog user={dialog.user} onOpenChange={closeDialog} />
       )}
 
       {dialog.kind === "resetPassword" && (
         <ResetPasswordDialog
           key={dialog.user.id}
           user={dialog.user}
-          onOpenChange={(open) => !open && setDialog({ kind: "none" })}
-          onSuccess={refetch}
+          onOpenChange={closeDialog}
         />
       )}
     </div>
   );
 }
-
-// ─── Local presentational helpers ─────────────────────────────────────
 
 function TableSkeleton() {
   return (

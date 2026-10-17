@@ -9,6 +9,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (updates: Partial<UserDetailed>) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

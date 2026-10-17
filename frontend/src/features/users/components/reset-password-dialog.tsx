@@ -1,5 +1,6 @@
 // src/features/users/components/reset-password-dialog.tsx
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -37,13 +38,11 @@ type SubmitFeedback = { kind: "idle" } | { kind: "error"; message: string };
 interface ResetPasswordDialogProps {
   user: User;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
 }
 
 export function ResetPasswordDialog({
   user,
   onOpenChange,
-  onSuccess,
 }: ResetPasswordDialogProps) {
   const [feedback, setFeedback] = useState<SubmitFeedback>({ kind: "idle" });
 
@@ -57,15 +56,14 @@ export function ResetPasswordDialog({
     },
   });
 
-  async function onSubmit(data: AdminPasswordResetInput) {
-    setFeedback({ kind: "idle" });
-
-    try {
-      await changeUserPassword(user.id, toAdminPasswordResetPayload(data));
-      form.reset();
-      onSuccess();
+  const mutation = useMutation({
+    mutationKey: ["users", "reset-password", user.id],
+    mutationFn: (data: AdminPasswordResetInput) =>
+      changeUserPassword(user.id, toAdminPasswordResetPayload(data)),
+    onSuccess: () => {
       onOpenChange(false);
-    } catch (error: unknown) {
+    },
+    onError: (error) => {
       if (error instanceof HttpError) {
         const details = error.details;
 
@@ -106,10 +104,16 @@ export function ResetPasswordDialog({
             ? error.message
             : "An unexpected error occurred.",
       });
-    }
+    },
+  });
+
+  function onSubmit(data: AdminPasswordResetInput) {
+    setFeedback({ kind: "idle" });
+    mutation.mutate(data);
   }
 
-  const { isSubmitting, isValid } = form.formState;
+  const { isValid } = form.formState;
+  const isSubmitting = mutation.isPending;
 
   return (
     <Dialog

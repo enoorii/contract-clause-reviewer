@@ -30,10 +30,10 @@ export function useReportStatus(taskId: string | undefined) {
     // global `retry` config before incrementing fetchFailureCount.
     retry: false,
     refetchInterval: (query) => {
-      const status = query.state.data?.status;
+      const taskStatus = query.state.data?.status;
 
       // Stop polling on terminal states.
-      if (status === "completed" || status === "failed") {
+      if (taskStatus === "completed" || taskStatus === "failed") {
         return false;
       }
 

@@ -1,5 +1,6 @@
 // src/features/users/components/edit-user-dialog.tsx
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2 } from "lucide-react";
@@ -45,15 +46,11 @@ type SubmitFeedback = { kind: "idle" } | { kind: "error"; message: string };
 interface EditUserDialogProps {
   user: User;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
 }
 
-export function EditUserDialog({
-  user,
-  onOpenChange,
-  onSuccess,
-}: EditUserDialogProps) {
+export function EditUserDialog({ user, onOpenChange }: EditUserDialogProps) {
   const [feedback, setFeedback] = useState<SubmitFeedback>({ kind: "idle" });
+  const queryClient = useQueryClient();
 
   const form = useForm<UserUpdateInput>({
     mode: "onChange",
@@ -65,14 +62,16 @@ export function EditUserDialog({
     },
   });
 
-  async function onSubmit(data: UserUpdateInput) {
-    setFeedback({ kind: "idle" });
-
-    try {
-      await updateUser(user.id, toUserUpdatePayload(data));
-      onSuccess();
+  const mutation = useMutation({
+    mutationKey: ["users", "update", user.id],
+    mutationFn: (data: UserUpdateInput) =>
+      updateUser(user.id, toUserUpdatePayload(data)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users-list"] });
+      queryClient.invalidateQueries({ queryKey: ["user-detail", user.id] });
       onOpenChange(false);
-    } catch (error: unknown) {
+    },
+    onError: (error) => {
       if (error instanceof HttpError) {
         const details = error.details;
 
@@ -109,10 +108,16 @@ export function EditUserDialog({
             ? error.message
             : "An unexpected error occurred.",
       });
-    }
+    },
+  });
+
+  function onSubmit(data: UserUpdateInput) {
+    setFeedback({ kind: "idle" });
+    mutation.mutate(data);
   }
 
-  const { isSubmitting, isValid, isDirty } = form.formState;
+  const { isValid, isDirty } = form.formState;
+  const isSubmitting = mutation.isPending;
 
   return (
     <Dialog

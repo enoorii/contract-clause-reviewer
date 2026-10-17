@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router";
+import { Loader2 } from "lucide-react";
 
 import { analysisCreateSchema, type AnalysisCreateInput } from "./schemas";
 import { submitAnalysis } from "./api";
@@ -18,7 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
 
 export function AnalysisForm() {
   const navigate = useNavigate();
@@ -34,13 +35,13 @@ export function AnalysisForm() {
     },
   });
 
-  async function onSubmit(data: AnalysisCreateInput) {
-    setGlobalError(null);
-
-    try {
-      const response = await submitAnalysis(data);
+  const mutation = useMutation({
+    mutationKey: ["analysis", "submit"],
+    mutationFn: submitAnalysis,
+    onSuccess: (response) => {
       navigate(`/analysis/status/${response.task_id}`);
-    } catch (error: unknown) {
+    },
+    onError: (error, variables) => {
       if (error instanceof HttpError) {
         const details = error.details;
 
@@ -49,7 +50,7 @@ export function AnalysisForm() {
           for (const err of details) {
             const fieldName = err.loc[err.loc.length - 1];
 
-            if (typeof fieldName === "string" && fieldName in data) {
+            if (typeof fieldName === "string" && fieldName in variables) {
               form.setError(fieldName as keyof AnalysisCreateInput, {
                 type: "server",
                 message: err.msg,
@@ -67,21 +68,25 @@ export function AnalysisForm() {
           return;
         }
 
-        // 422 with unexpected shape, or non-2xx with no parseable detail
         setGlobalError(error.message || "An unexpected server error occurred.");
         return;
       }
 
-      // NetworkError or anything else that isn't an HttpError
       setGlobalError(
         error instanceof NetworkError
           ? error.message
           : "An unexpected error occurred.",
       );
-    }
+    },
+  });
+
+  function onSubmit(data: AnalysisCreateInput) {
+    setGlobalError(null);
+    mutation.mutate(data);
   }
 
-  const isSubmitting = form.formState.isSubmitting;
+  const isSubmitting = mutation.isPending;
+  const isDisabled = isSubmitting || !form.formState.isValid;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -92,7 +97,6 @@ export function AnalysisForm() {
       )}
 
       <FieldGroup>
-        {/* Title Field */}
         <Controller
           control={form.control}
           name="title"
@@ -114,7 +118,6 @@ export function AnalysisForm() {
           )}
         />
 
-        {/* Contract Text Field */}
         <Controller
           control={form.control}
           name="text"
@@ -136,7 +139,6 @@ export function AnalysisForm() {
           )}
         />
 
-        {/* Description Field (Optional) */}
         <Controller
           control={form.control}
           name="description"
@@ -150,7 +152,7 @@ export function AnalysisForm() {
                 placeholder="Any additional context or specific clauses to look out for..."
                 aria-invalid={fieldState.invalid}
                 {...field}
-                value={field.value ?? ""} // Use this with any field whose Zod type includes `.optional()` or `.nullable()`
+                value={field.value ?? ""}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
@@ -158,12 +160,7 @@ export function AnalysisForm() {
         />
       </FieldGroup>
 
-      <Button
-        type="submit"
-
-        disabled={isSubmitting || !form.formState.isValid}
-        className="w-full md:w-auto"
-      >
+      <Button type="submit" disabled={isDisabled} className="w-full md:w-auto">
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

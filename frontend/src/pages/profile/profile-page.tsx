@@ -1,13 +1,11 @@
 // src/pages/profile/profile-page.tsx
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 
 import { getProfile } from "@/features/users/api";
 import { UsernameForm } from "@/features/users/components/username-form";
 import { PasswordForm } from "@/features/users/components/password-form";
 import { HttpError, NetworkError } from "@/lib/api/types";
-import type { UserDetailed } from "@/types";
-
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,35 +17,23 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+function profileErrorMessage(err: unknown): string {
+  if (err instanceof HttpError || err instanceof NetworkError) {
+    return err.message;
+  }
+  return "Failed to load profile.";
+}
+
 export function ProfilePage() {
-  const [user, setUser] = useState<UserDetailed | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await getProfile();
-        if (cancelled) return;
-        setUser(data);
-      } catch (err) {
-        if (cancelled) return;
-        setError(
-          err instanceof HttpError || err instanceof NetworkError
-            ? err.message
-            : "Failed to load profile.",
-        );
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: getProfile,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
 
   if (isLoading) {
     return (
@@ -66,7 +52,7 @@ export function ProfilePage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error ?? "Profile not available."}
+            {error ? profileErrorMessage(error) : "Profile not available."}
           </AlertDescription>
         </Alert>
       </div>
@@ -82,7 +68,6 @@ export function ProfilePage() {
         </p>
       </div>
 
-      {/* Read-only account info */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Account Information</CardTitle>
@@ -123,7 +108,6 @@ export function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* Username form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Username</CardTitle>
@@ -132,18 +116,10 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <UsernameForm
-            initialUsername={user.username}
-            onSuccess={(newUsername) =>
-              setUser((prev) =>
-                prev ? { ...prev, username: newUsername } : prev,
-              )
-            }
-          />
+          <UsernameForm initialUsername={user.username} />
         </CardContent>
       </Card>
 
-      {/* Password form */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Password</CardTitle>

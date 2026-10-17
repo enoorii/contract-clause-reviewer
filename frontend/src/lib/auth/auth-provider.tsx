@@ -1,3 +1,4 @@
+// src/features/auth/auth-provider.tsx
 import {
   useState,
   useEffect,
@@ -5,6 +6,8 @@ import {
   useMemo,
   type PropsWithChildren,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { AuthContext, type AuthStatus } from "./auth-context";
 import { tokenStorage } from "@/lib/auth/storage";
 import { setAuthHandler } from "@/lib/api/client";
@@ -15,6 +18,7 @@ import type { UserDetailed } from "@/types";
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<UserDetailed | null>(null);
   const [status, setStatus] = useState<AuthStatus>("initializing");
+  const queryClient = useQueryClient();
 
   // Session restoration on mount
   useEffect(() => {
@@ -25,12 +29,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        // Try to fetch current user with existing access token
         const userData = await usersApi.getProfile();
         setUser(userData);
         setStatus("authenticated");
       } catch {
-        // Access token expired or invalid
         const refreshToken = tokenStorage.getRefreshToken();
         if (!refreshToken) {
           tokenStorage.clearTokens();
@@ -39,17 +41,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         try {
-          // Attempt refresh
           const tokens = await authApi.refresh(refreshToken);
           tokenStorage.setAccessToken(tokens.access_token);
           tokenStorage.setRefreshToken(tokens.refresh_token);
 
-          // Retry fetching user
           const userData = await usersApi.getProfile();
           setUser(userData);
           setStatus("authenticated");
         } catch {
-          // Refresh failed - clear everything
           tokenStorage.clearTokens();
           setStatus("unauthenticated");
         }
@@ -73,7 +72,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
           tokenStorage.setRefreshToken(tokens.refresh_token);
           return tokens.access_token;
         } catch {
-          // Refresh failed - will trigger logout in the interceptor
           return null;
         }
       },
@@ -81,9 +79,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         tokenStorage.clearTokens();
         setUser(null);
         setStatus("unauthenticated");
+        queryClient.clear();
       },
     });
-  }, []);
+  }, [queryClient]);
 
   const login = useCallback(async (username: string, password: string) => {
     try {
@@ -113,7 +112,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
       tokenStorage.clearTokens();
       setUser(null);
       setStatus("unauthenticated");
+      queryClient.clear();
     }
+  }, [queryClient]);
+
+  /**
+   * Merge partial updates into the current user object.
+   * Used by mutations that change user fields (e.g., username) so the
+   * header and other `useAuth().user` consumers stay in sync with the
+   * server's response without a full cache refetch.
+   */
+  const updateUser = useCallback((updates: Partial<UserDetailed>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
   }, []);
 
   const value = useMemo(
@@ -123,8 +133,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isLoading: status === "initializing",
       login,
       logout,
+      updateUser,
     }),
-    [user, status, login, logout],
+    [user, status, login, logout, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

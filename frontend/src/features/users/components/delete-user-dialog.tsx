@@ -1,5 +1,5 @@
 // src/features/users/components/delete-user-dialog.tsx
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { deleteUser } from "../api";
@@ -21,35 +21,32 @@ import { Button } from "@/components/ui/button";
 interface DeleteUserDialogProps {
   user: User;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
 }
 
 export function DeleteUserDialog({
   user,
   onOpenChange,
-  onSuccess,
 }: DeleteUserDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  async function handleDelete() {
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      await deleteUser(user.id);
-      onSuccess();
+  const mutation = useMutation({
+    mutationKey: ["users", "delete", user.id],
+    mutationFn: () => deleteUser(user.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users-list"] });
+      queryClient.invalidateQueries({ queryKey: ["user-detail", user.id] });
       onOpenChange(false);
-    } catch (err) {
-      setError(
-        err instanceof HttpError || err instanceof NetworkError
-          ? err.message
-          : "Failed to delete user.",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+    },
+  });
+
+  const errorMessage = mutation.error
+    ? mutation.error instanceof HttpError ||
+      mutation.error instanceof NetworkError
+      ? mutation.error.message
+      : "Failed to delete user."
+    : null;
+
+  const isSubmitting = mutation.isPending;
 
   return (
     <AlertDialog
@@ -69,10 +66,10 @@ export function DeleteUserDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {error && (
+        {errorMessage && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         )}
 
@@ -80,7 +77,7 @@ export function DeleteUserDialog({
           <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
           <Button
             variant="destructive"
-            onClick={handleDelete}
+            onClick={() => mutation.mutate()}
             disabled={isSubmitting}
           >
             {isSubmitting ? (

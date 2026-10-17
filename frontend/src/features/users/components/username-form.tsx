@@ -1,11 +1,13 @@
 // src/features/users/components/username-form.tsx
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 import { usernameUpdateSchema, type UsernameUpdateInput } from "../schemas";
 import { updateProfile } from "../api";
+import { useAuth } from "@/lib/auth/hooks";
 import { HttpError, NetworkError } from "@/lib/api/types";
 
 import {
@@ -18,10 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-/**
- * Discriminated union for the outcome of a submit attempt.
- * Note: deliberately omits "submitting" — RHF owns that via formState.
- */
 type SubmitFeedback =
   | { kind: "idle" }
   | { kind: "success"; message: string }
@@ -29,14 +27,12 @@ type SubmitFeedback =
 
 interface UsernameFormProps {
   initialUsername: string;
-  onSuccess?: (newUsername: string) => void;
 }
 
-export function UsernameForm({
-  initialUsername,
-  onSuccess,
-}: UsernameFormProps) {
+export function UsernameForm({ initialUsername }: UsernameFormProps) {
   const [feedback, setFeedback] = useState<SubmitFeedback>({ kind: "idle" });
+  const queryClient = useQueryClient();
+  const { updateUser } = useAuth();
 
   const form = useForm<UsernameUpdateInput>({
     mode: "onChange",
@@ -44,23 +40,23 @@ export function UsernameForm({
     defaultValues: { username: initialUsername },
   });
 
-  async function onSubmit(data: UsernameUpdateInput) {
-    setFeedback({ kind: "idle" });
-
-    try {
-      const updated = await updateProfile(data.username);
-      // Reset with the server's canonical value — in case the backend
-      // normalizes it (trimming, casing, etc.).
+  const mutation = useMutation({
+    mutationKey: ["profile", "update-username"],
+    mutationFn: (data: UsernameUpdateInput) => updateProfile(data.username),
+    onSuccess: (updated) => {
       form.reset({ username: updated.username });
       setFeedback({ kind: "success", message: "Username updated." });
-      onSuccess?.(updated.username);
-    } catch (error: unknown) {
+      // Sync two sources of truth:
+      // 1) the auth context (for the header and any useAuth().user consumer)
+      // 2) the query cache (for profile page, dashboard, etc.)
+      updateUser({ username: updated.username });
+      queryClient.invalidateQueries({ queryKey: ["current-user"] });
+      queryClient.invalidateQueries({ queryKey: ["users-list"] });
+    },
+    onError: (error) => {
       if (error instanceof HttpError) {
         const details = error.details;
 
-        // 422: FastAPI validation errors — map to form fields.
-        // The backend reports the field as "new_username" (query param name),
-        // so we accept both that and "username".
         if (error.status === 422 && Array.isArray(details)) {
           for (const err of details) {
             const rawField = err.loc[err.loc.length - 1];
@@ -92,10 +88,16 @@ export function UsernameForm({
             ? error.message
             : "An unexpected error occurred.",
       });
-    }
+    },
+  });
+
+  function onSubmit(data: UsernameUpdateInput) {
+    setFeedback({ kind: "idle" });
+    mutation.mutate(data);
   }
 
-  const { isSubmitting, isValid, isDirty } = form.formState;
+  const { isValid, isDirty } = form.formState;
+  const isSubmitting = mutation.isPending;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

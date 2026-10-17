@@ -1,11 +1,10 @@
 // src/pages/dashboard/dashboard-page.tsx
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { useQuery } from "@tanstack/react-query";
 import { FilePlus, AlertCircle } from "lucide-react";
 
 import { getProfile } from "@/features/users/api";
 import { HttpError, NetworkError } from "@/lib/api/types";
-import type { UserDetailed } from "@/types/users";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,35 +16,26 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+function dashboardErrorMessage(err: unknown): string {
+  if (err instanceof HttpError || err instanceof NetworkError) {
+    return err.message;
+  }
+  return "Failed to load your profile.";
+}
+
 export function DashboardPage() {
-  const [user, setUser] = useState<UserDetailed | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const data = await getProfile();
-        if (!cancelled) setUser(data);
-      } catch (err) {
-        if (!cancelled) {
-          setError(
-            err instanceof HttpError || err instanceof NetworkError
-              ? err.message
-              : "Failed to load your profile.",
-          );
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Same query key as ProfilePage — TanStack Query deduplicates and shares
+  // the cache. Navigating between the two pages within staleTime shows
+  // cached data instantly.
+  const {
+    data: user,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["current-user"],
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    queryFn: getProfile,
+  });
 
   const analyses = user?.analyses ?? [];
 
@@ -66,7 +56,7 @@ export function DashboardPage() {
 
       <h3 className="mb-4 text-lg font-semibold">Recent Analyses</h3>
 
-      {isLoading ? (
+      {isLoading && !user ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i}>
@@ -84,7 +74,7 @@ export function DashboardPage() {
       ) : error ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{dashboardErrorMessage(error)}</AlertDescription>
         </Alert>
       ) : analyses.length === 0 ? (
         <Card className="flex flex-col items-center justify-center p-12 text-center">
