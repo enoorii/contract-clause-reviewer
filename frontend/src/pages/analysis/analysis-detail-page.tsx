@@ -5,8 +5,12 @@ import { AlertCircle } from "lucide-react";
 
 import { getAnalysis } from "@/features/analysis/api";
 import { ReportWidget } from "@/features/reports/components/report-widget";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/api/error-message";
+import { PageHeader } from "@/components/common/page-header";
+import { EmptyState } from "@/components/common/empty-state";
+import { HttpError } from "@/lib/api/types";
 import type { RiskLevel } from "@/types/analysis";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,13 +38,10 @@ function riskBadgeClass(level: RiskLevel): string {
 }
 
 function analysisErrorMessage(err: unknown): string {
-  if (err instanceof HttpError) {
-    return err.status === 404 ? "Analysis not found." : err.message;
+  if (err instanceof HttpError && err.status === 404) {
+    return "Analysis not found.";
   }
-  if (err instanceof NetworkError) {
-    return err.message;
-  }
-  return "Failed to load analysis.";
+  return getErrorMessage(err, "Failed to load analysis.");
 }
 
 export function AnalysisDetailPage() {
@@ -58,7 +59,6 @@ export function AnalysisDetailPage() {
     enabled: isValidId,
   });
 
-  // Invalid id — no fetch attempted, show the "not found" UI directly.
   if (!isValidId) {
     return (
       <div className="p-6 md:p-8">
@@ -104,10 +104,10 @@ export function AnalysisDetailPage() {
   return (
     <div className="space-y-6 p-6 md:p-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">{analysis.title}</h2>
-        {analysis.description && (
-          <p className="mt-1 text-muted-foreground">{analysis.description}</p>
-        )}
+        <PageHeader
+          title={analysis.title}
+          description={analysis.description ?? undefined}
+        />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{analysis.document_type}</Badge>
           <Badge variant="outline">
@@ -144,50 +144,62 @@ export function AnalysisDetailPage() {
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Clauses</h3>
-        {analysis.clauses.map((clause) => (
-          <Card key={clause.id}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
+
+        {analysis.clauses.length === 0 ? (
+          <EmptyState
+            title="No clauses identified"
+            description="This document may be too short or contain no analyzable clauses."
+          />
+        ) : (
+          analysis.clauses.map((clause) => (
+            <Card key={clause.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-base">
+                      {clause.clause_type}
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      {clause.summary}
+                    </CardDescription>
+                  </div>
+                  <Badge
+                    className={cn(
+                      "capitalize",
+                      riskBadgeClass(clause.risk_level),
+                    )}
+                  >
+                    {clause.risk_level}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div>
-                  <CardTitle className="text-base">
-                    {clause.clause_type}
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    {clause.summary}
-                  </CardDescription>
+                  <p className="text-sm font-medium">Key terms</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {clause.key_terms.map((term) => (
+                      <Badge
+                        key={term}
+                        variant="outline"
+                        className="font-normal"
+                      >
+                        {term}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <Badge
-                  className={cn(
-                    "capitalize",
-                    riskBadgeClass(clause.risk_level),
-                  )}
-                >
-                  {clause.risk_level}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium">Key terms</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {clause.key_terms.map((term) => (
-                    <Badge key={term} variant="outline" className="font-normal">
-                      {term}
-                    </Badge>
-                  ))}
+                <div>
+                  <p className="text-sm font-medium">Suggested actions</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    {clause.suggested_actions.map((action) => (
+                      <li key={action}>{action}</li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium">Suggested actions</p>
-                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  {clause.suggested_actions.map((action) => (
-                    <li key={action}>{action}</li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

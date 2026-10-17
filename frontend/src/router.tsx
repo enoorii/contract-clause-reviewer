@@ -10,7 +10,6 @@ import { LoginPage } from "@/pages/auth/login-page";
 import { DashboardPage } from "@/pages/dashboard/dashboard-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { ProfilePage } from "@/pages/profile/profile-page";
-import { ReportPage } from "@/pages/reports/report-page";
 import { UsersPage } from "@/pages/admin/users-page";
 import { RequireAuth } from "@/features/auth/components/protected-route";
 import { RequireRole } from "@/features/auth/components/require-role";
@@ -42,7 +41,6 @@ export function AppRoutes() {
             path="/analysis/:analysisId"
             element={<AnalysisDetailPage />}
           />
-          <Route path="/reports/:analysisId" element={<ReportPage />} />
           <Route path="/profile" element={<ProfilePage />} />
 
           {/* Admin-only routes */}

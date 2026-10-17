@@ -22,7 +22,7 @@ export function getAnalysis(analysisId: number) {
 }
 
 export function listAnalyses(params?: Record<string, unknown>) {
-  return api.get<PaginatedResponse<AnalysisSummary>>("/analysis", {
+  return api.get<PaginatedResponse<AnalysisSummary>>("/api/v1//analysis", {
     params,
   });
 }

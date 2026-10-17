@@ -5,7 +5,9 @@ import { AlertCircle } from "lucide-react";
 import { getProfile } from "@/features/users/api";
 import { UsernameForm } from "@/features/users/components/username-form";
 import { PasswordForm } from "@/features/users/components/password-form";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/api/error-message";
+import { PageHeader } from "@/components/common/page-header";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -17,13 +19,6 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function profileErrorMessage(err: unknown): string {
-  if (err instanceof HttpError || err instanceof NetworkError) {
-    return err.message;
-  }
-  return "Failed to load profile.";
-}
-
 export function ProfilePage() {
   const {
     data: user,
@@ -32,7 +27,7 @@ export function ProfilePage() {
   } = useQuery({
     queryKey: ["current-user"],
     queryFn: getProfile,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
   });
 
   if (isLoading) {
@@ -52,7 +47,9 @@ export function ProfilePage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {error ? profileErrorMessage(error) : "Profile not available."}
+            {error
+              ? getErrorMessage(error, "Failed to load profile.")
+              : "Profile not available."}
           </AlertDescription>
         </Alert>
       </div>
@@ -61,12 +58,10 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6 md:p-8">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Profile</h2>
-        <p className="mt-1 text-muted-foreground">
-          Manage your account information.
-        </p>
-      </div>
+      <PageHeader
+        title="Profile"
+        description="Manage your account information."
+      />
 
       <Card>
         <CardHeader>

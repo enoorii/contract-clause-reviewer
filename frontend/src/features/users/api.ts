@@ -73,10 +73,3 @@ export async function changeUserPassword(
 ): Promise<User> {
   return api.post<User>(`/api/v1/users/${userId}/password`, payload);
 }
-
-/**
- * Expires all active sessions for a specific user (Admin only).
- */
-export async function expireUserSessions(userId: string): Promise<void> {
-  return api.post<void>(`/api/v1/auth/sessions/expire/${userId}`);
-}

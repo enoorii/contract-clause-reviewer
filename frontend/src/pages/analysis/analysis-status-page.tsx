@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 import { useAnalysisStatus } from "@/features/analysis/hooks";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/api/error-message";
+import { PageHeader } from "@/components/common/page-header";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,21 +17,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-function errorMessage(err: unknown): string {
-  if (err instanceof HttpError || err instanceof NetworkError) {
-    return err.message;
-  }
-  return "Failed to fetch status.";
-}
-
 export function AnalysisStatusPage() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
 
   const { data: status, isLoading, error } = useAnalysisStatus(taskId);
 
-  // When the analysis finishes, swap the URL for the persistent resource.
-  // `replace: true` keeps the ephemeral task URL out of browser history.
   useEffect(() => {
     if (status?.status === "completed" && status.analysis) {
       navigate(`/analysis/${status.analysis.id}`, { replace: true });
@@ -38,14 +31,10 @@ export function AnalysisStatusPage() {
 
   return (
     <div className="mx-auto max-w-2xl p-6 md:p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight">
-          Analyzing Contract
-        </h2>
-        <p className="mt-1 text-muted-foreground">
-          Our AI is reviewing your document. This usually takes 30–60 seconds.
-        </p>
-      </div>
+      <PageHeader
+        title="Analyzing Contract"
+        description="Our AI is reviewing your document. This usually takes 30–60 seconds."
+      />
 
       <Card>
         <CardHeader>
@@ -88,7 +77,9 @@ export function AnalysisStatusPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Could not fetch status</AlertTitle>
-              <AlertDescription>{errorMessage(error)}</AlertDescription>
+              <AlertDescription>
+                {getErrorMessage(error, "Failed to fetch status.")}
+              </AlertDescription>
             </Alert>
           )}
 

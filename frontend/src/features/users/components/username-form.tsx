@@ -8,7 +8,7 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { usernameUpdateSchema, type UsernameUpdateInput } from "../schemas";
 import { updateProfile } from "../api";
 import { useAuth } from "@/lib/auth/hooks";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 
 import {
   Field,
@@ -46,47 +46,19 @@ export function UsernameForm({ initialUsername }: UsernameFormProps) {
     onSuccess: (updated) => {
       form.reset({ username: updated.username });
       setFeedback({ kind: "success", message: "Username updated." });
-      // Sync two sources of truth:
-      // 1) the auth context (for the header and any useAuth().user consumer)
-      // 2) the query cache (for profile page, dashboard, etc.)
       updateUser({ username: updated.username });
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
       queryClient.invalidateQueries({ queryKey: ["users-list"] });
     },
     onError: (error) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const rawField = err.loc[err.loc.length - 1];
-            if (rawField === "new_username" || rawField === "username") {
-              form.setError("username", { type: "server", message: err.msg });
-            } else {
-              setFeedback({ kind: "error", message: err.msg });
-            }
-          }
-          return;
-        }
-
-        if (typeof details === "string") {
-          setFeedback({ kind: "error", message: details });
-          return;
-        }
-
-        setFeedback({
-          kind: "error",
-          message: error.message || "Failed to update username.",
-        });
-        return;
-      }
-
-      setFeedback({
-        kind: "error",
-        message:
-          error instanceof NetworkError
-            ? error.message
-            : "An unexpected error occurred.",
+      handleFormError(error, {
+        form,
+        fieldMap: {
+          new_username: "username",
+          username: "username",
+        },
+        setFormError: (msg) => setFeedback({ kind: "error", message: msg }),
+        fallback: "Failed to update username.",
       });
     },
   });

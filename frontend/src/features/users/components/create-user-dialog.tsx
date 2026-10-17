@@ -11,7 +11,7 @@ import {
   type UserCreateInput,
 } from "../schemas";
 import { createUser } from "../api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 
 import {
   Field,
@@ -60,42 +60,14 @@ export function CreateUserDialog({ onOpenChange }: CreateUserDialogProps) {
     mutationFn: (data: UserCreateInput) =>
       createUser(toUserCreatePayload(data)),
     onSuccess: () => {
-      // Every users-list variant (any page, any filter) is now stale.
       queryClient.invalidateQueries({ queryKey: ["users-list"] });
       onOpenChange(false);
     },
     onError: (error) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const rawField = err.loc[err.loc.length - 1];
-            if (rawField === "username" || rawField === "password") {
-              form.setError(rawField, { type: "server", message: err.msg });
-            } else {
-              setFeedback({ kind: "error", message: err.msg });
-            }
-          }
-          return;
-        }
-
-        setFeedback({
-          kind: "error",
-          message:
-            typeof details === "string"
-              ? details
-              : error.message || "Failed to create user.",
-        });
-        return;
-      }
-
-      setFeedback({
-        kind: "error",
-        message:
-          error instanceof NetworkError
-            ? error.message
-            : "An unexpected error occurred.",
+      handleFormError(error, {
+        form,
+        setFormError: (msg) => setFeedback({ kind: "error", message: msg }),
+        fallback: "Failed to create user.",
       });
     },
   });

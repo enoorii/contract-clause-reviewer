@@ -11,7 +11,7 @@ import {
   type AdminPasswordResetInput,
 } from "../schemas";
 import { changeUserPassword } from "../api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 import type { User } from "@/types";
 
 import {
@@ -64,45 +64,14 @@ export function ResetPasswordDialog({
       onOpenChange(false);
     },
     onError: (error) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const rawField = err.loc[err.loc.length - 1];
-            if (rawField === "old_password") {
-              form.setError("oldPassword", {
-                type: "server",
-                message: err.msg,
-              });
-            } else if (rawField === "new_password") {
-              form.setError("newPassword", {
-                type: "server",
-                message: err.msg,
-              });
-            } else {
-              setFeedback({ kind: "error", message: err.msg });
-            }
-          }
-          return;
-        }
-
-        setFeedback({
-          kind: "error",
-          message:
-            typeof details === "string"
-              ? details
-              : error.message || "Failed to reset password.",
-        });
-        return;
-      }
-
-      setFeedback({
-        kind: "error",
-        message:
-          error instanceof NetworkError
-            ? error.message
-            : "An unexpected error occurred.",
+      handleFormError(error, {
+        form,
+        fieldMap: {
+          old_password: "oldPassword",
+          new_password: "newPassword",
+        },
+        setFormError: (msg) => setFeedback({ kind: "error", message: msg }),
+        fallback: "Failed to reset password.",
       });
     },
   });

@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 
 import { analysisCreateSchema, type AnalysisCreateInput } from "./schemas";
 import { submitAnalysis } from "./api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 
 import {
   Field,
@@ -28,11 +28,7 @@ export function AnalysisForm() {
   const form = useForm<AnalysisCreateInput>({
     mode: "onTouched",
     resolver: zodResolver(analysisCreateSchema),
-    defaultValues: {
-      title: "",
-      text: "",
-      description: "",
-    },
+    defaultValues: { title: "", text: "", description: "" },
   });
 
   const mutation = useMutation({
@@ -41,42 +37,12 @@ export function AnalysisForm() {
     onSuccess: (response) => {
       navigate(`/analysis/status/${response.task_id}`);
     },
-    onError: (error, variables) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        // 422: FastAPI validation errors → map to form fields
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const fieldName = err.loc[err.loc.length - 1];
-
-            if (typeof fieldName === "string" && fieldName in variables) {
-              form.setError(fieldName as keyof AnalysisCreateInput, {
-                type: "server",
-                message: err.msg,
-              });
-            } else {
-              setGlobalError(err.msg);
-            }
-          }
-          return;
-        }
-
-        // Business logic errors: 400, 403, 404, 500 with a string detail
-        if (typeof details === "string") {
-          setGlobalError(details);
-          return;
-        }
-
-        setGlobalError(error.message || "An unexpected server error occurred.");
-        return;
-      }
-
-      setGlobalError(
-        error instanceof NetworkError
-          ? error.message
-          : "An unexpected error occurred.",
-      );
+    onError: (error) => {
+      handleFormError(error, {
+        form,
+        setFormError: setGlobalError,
+        fallback: "An unexpected server error occurred.",
+      });
     },
   });
 

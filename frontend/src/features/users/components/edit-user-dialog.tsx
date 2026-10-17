@@ -11,7 +11,7 @@ import {
   type UserUpdateInput,
 } from "../schemas";
 import { updateUser } from "../api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 import type { User } from "@/types";
 
 import {
@@ -72,41 +72,10 @@ export function EditUserDialog({ user, onOpenChange }: EditUserDialogProps) {
       onOpenChange(false);
     },
     onError: (error) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const rawField = err.loc[err.loc.length - 1];
-            if (
-              rawField === "username" ||
-              rawField === "role" ||
-              rawField === "is_active"
-            ) {
-              form.setError(rawField, { type: "server", message: err.msg });
-            } else {
-              setFeedback({ kind: "error", message: err.msg });
-            }
-          }
-          return;
-        }
-
-        setFeedback({
-          kind: "error",
-          message:
-            typeof details === "string"
-              ? details
-              : error.message || "Failed to update user.",
-        });
-        return;
-      }
-
-      setFeedback({
-        kind: "error",
-        message:
-          error instanceof NetworkError
-            ? error.message
-            : "An unexpected error occurred.",
+      handleFormError(error, {
+        form,
+        setFormError: (msg) => setFeedback({ kind: "error", message: msg }),
+        fallback: "Failed to update user.",
       });
     },
   });

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { deleteUser } from "../api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/api/error-message";
 import type { User } from "@/types";
 
 import {
@@ -40,10 +40,7 @@ export function DeleteUserDialog({
   });
 
   const errorMessage = mutation.error
-    ? mutation.error instanceof HttpError ||
-      mutation.error instanceof NetworkError
-      ? mutation.error.message
-      : "Failed to delete user."
+    ? getErrorMessage(mutation.error, "Failed to delete user.")
     : null;
 
   const isSubmitting = mutation.isPending;

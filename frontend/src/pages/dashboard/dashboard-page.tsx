@@ -4,7 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { FilePlus, AlertCircle } from "lucide-react";
 
 import { getProfile } from "@/features/users/api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/api/error-message";
+import { PageHeader } from "@/components/common/page-header";
+import { EmptyState } from "@/components/common/empty-state";
+
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,24 +19,14 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function dashboardErrorMessage(err: unknown): string {
-  if (err instanceof HttpError || err instanceof NetworkError) {
-    return err.message;
-  }
-  return "Failed to load your profile.";
-}
-
 export function DashboardPage() {
-  // Same query key as ProfilePage — TanStack Query deduplicates and shares
-  // the cache. Navigating between the two pages within staleTime shows
-  // cached data instantly.
   const {
     data: user,
     isLoading,
     error,
   } = useQuery({
     queryKey: ["current-user"],
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
     queryFn: getProfile,
   });
 
@@ -41,18 +34,16 @@ export function DashboardPage() {
 
   return (
     <div className="p-6 md:p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Overview of your recent contract analyses.
-          </p>
-        </div>
-        <Button render={<Link to="/analysis/new" />}>
-          <FilePlus className="mr-2 h-4 w-4" />
-          New Analysis
-        </Button>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your recent contract analyses."
+        action={
+          <Button render={<Link to="/analysis/new" />}>
+            <FilePlus className="mr-2 h-4 w-4" />
+            New Analysis
+          </Button>
+        }
+      />
 
       <h3 className="mb-4 text-lg font-semibold">Recent Analyses</h3>
 
@@ -74,21 +65,21 @@ export function DashboardPage() {
       ) : error ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{dashboardErrorMessage(error)}</AlertDescription>
+          <AlertDescription>
+            {getErrorMessage(error, "Failed to load your profile.")}
+          </AlertDescription>
         </Alert>
       ) : analyses.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
-          <CardHeader>
-            <CardTitle>No analyses yet</CardTitle>
-            <CardDescription>
-              Get started by submitting your first contract for review.
-            </CardDescription>
-          </CardHeader>
-          <Button render={<Link to="/analysis/new" />}>
-            <FilePlus className="mr-2 h-4 w-4" />
-            Create Analysis
-          </Button>
-        </Card>
+        <EmptyState
+          title="No analyses yet"
+          description="Get started by submitting your first contract for review."
+          action={
+            <Button render={<Link to="/analysis/new" />}>
+              <FilePlus className="mr-2 h-4 w-4" />
+              Create Analysis
+            </Button>
+          }
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {analyses.map((analysis) => (

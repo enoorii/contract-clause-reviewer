@@ -11,7 +11,8 @@ import {
   type PasswordChangeInput,
 } from "../schemas";
 import { changeOwnPassword } from "../api";
-import { HttpError, NetworkError } from "@/lib/api/types";
+import { HttpError } from "@/lib/api/types";
+import { handleFormError } from "@/lib/forms/handle-form-error";
 
 import {
   Field,
@@ -36,9 +37,6 @@ type SubmitFeedback =
 
 export function PasswordForm() {
   const [feedback, setFeedback] = useState<SubmitFeedback>({ kind: "idle" });
-
-  // Independent visibility state per field. Revealing the new password
-  // should not reveal the confirmation (and vice versa).
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -59,64 +57,34 @@ export function PasswordForm() {
       changeOwnPassword(toPasswordChangePayload(data)),
     onSuccess: () => {
       form.reset();
-      // Reset visibility on success — avoids surprising the user
-      // if they re-open the form shortly after.
       setShowOld(false);
       setShowNew(false);
       setShowConfirm(false);
       setFeedback({ kind: "success", message: "Password updated." });
     },
     onError: (error) => {
-      if (error instanceof HttpError) {
-        const details = error.details;
-
-        if (error.status === 422 && Array.isArray(details)) {
-          for (const err of details) {
-            const rawField = err.loc[err.loc.length - 1];
-            if (rawField === "old_password") {
-              form.setError("oldPassword", {
-                type: "server",
-                message: err.msg,
-              });
-            } else if (rawField === "new_password") {
-              form.setError("newPassword", {
-                type: "server",
-                message: err.msg,
-              });
-            } else {
-              setFeedback({ kind: "error", message: err.msg });
-            }
-          }
-          return;
-        }
-
-        // 401 fallback (defense in depth if the backend reverts to 401)
-        if (error.status === 401 && typeof details === "string") {
-          form.setError("oldPassword", {
-            type: "server",
-            message: details,
-          });
-          return;
-        }
-
-        if (typeof details === "string") {
-          setFeedback({ kind: "error", message: details });
-          return;
-        }
-
-        setFeedback({
-          kind: "error",
-          message: error.message || "Failed to update password.",
+      // Special case: backend returns 401 (with string detail) for wrong
+      // old password. Attach it to the field, not the form alert.
+      if (
+        error instanceof HttpError &&
+        error.status === 401 &&
+        typeof error.details === "string"
+      ) {
+        form.setError("oldPassword", {
+          type: "server",
+          message: error.details,
         });
         return;
       }
 
-      setFeedback({
-        kind: "error",
-        message:
-          error instanceof NetworkError
-            ? error.message
-            : "An unexpected error occurred.",
+      handleFormError(error, {
+        form,
+        fieldMap: {
+          old_password: "oldPassword",
+          new_password: "newPassword",
+        },
+        setFormError: (msg) => setFeedback({ kind: "error", message: msg }),
+        fallback: "Failed to update password.",
       });
     },
   });
@@ -126,12 +94,12 @@ export function PasswordForm() {
     mutation.mutate(data);
   }
 
-  const { isValid } = form.formState;
+  const { isValid, isDirty } = form.formState;
   const isSubmitting = mutation.isPending;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      {feedback.kind === "success" && (
+      {feedback.kind === "success" && !isDirty && (
         <Alert>
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>{feedback.message}</AlertDescription>
@@ -146,7 +114,6 @@ export function PasswordForm() {
       )}
 
       <FieldGroup>
-        {/* Current Password */}
         <Controller
           control={form.control}
           name="oldPassword"
@@ -182,7 +149,6 @@ export function PasswordForm() {
           )}
         />
 
-        {/* New Password */}
         <Controller
           control={form.control}
           name="newPassword"
@@ -222,7 +188,6 @@ export function PasswordForm() {
           )}
         />
 
-        {/* Confirm New Password */}
         <Controller
           control={form.control}
           name="confirmPassword"
