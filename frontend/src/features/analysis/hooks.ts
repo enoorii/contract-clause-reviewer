@@ -7,7 +7,6 @@ import type { AnalysisStatusResponse } from "@/types/analysis";
 const POLL_INTERVAL_MS = 5000;
 const MAX_CONSECUTIVE_ERRORS = 3;
 
-
 /**
  * Polls the status of a Celery analysis task every 5s until it reaches a
  * terminal state (completed | failed), or until too many consecutive
