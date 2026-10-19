@@ -3,7 +3,7 @@
 </h1>
 
 <p align="center">
-  An AI-powered contract analysis service built with FastAPI, layered architecture, Celery, Redis and PostgreSQL.
+  An AI-powered contract analysis service with a FastAPI backend, a React + TypeScript frontend, and an Appsmith dashboard — built around layered architecture, async processing, and production-shaped engineering.
 </p>
 
 <p align="center">
@@ -12,10 +12,14 @@
   <img src="https://img.shields.io/badge/Celery-Task%20Queue-37814A?style=for-the-badge&logo=celery">
   <img src="https://img.shields.io/badge/Redis-Broker%20%26%20Rate%20Limit-red?style=for-the-badge&logo=redis">
   <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react">
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript">
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite">
+  <img src="https://img.shields.io/badge/TanStack%20Query-Server%20State-FF4154?style=for-the-badge&logo=reactquery">
+  <img src="https://img.shields.io/badge/Tailwind-v4-38B2AC?style=for-the-badge&logo=tailwindcss">
+  <img src="https://img.shields.io/badge/shadcn%2Fui-Components-black?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Vitest-Testing-6E9F18?style=for-the-badge&logo=vitest">
   <img src="https://img.shields.io/badge/Docker-Containerized-blue?style=for-the-badge&logo=docker">
-  <img src="https://img.shields.io/badge/uv-Package%20Manager-purple?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Ruff-Linting-orange?style=for-the-badge&logo=ruff">
-  <img src="https://img.shields.io/badge/Pytest-Testing-yellow?style=for-the-badge&logo=pytest">
 </p>
 
 <p align="center">
@@ -24,22 +28,33 @@
 
 <table>
 <tr>
+<td align="center"><img src="docs/images/react/login.webp" alt="React login" width="400"></td>
+<td align="center"><img src="docs/images/react/dashboard.webp" alt="React dashboard" width="400"></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/images/react/detailed-analysis.webp" alt="React analysis detail" width="400"></td>
+<td align="center"><img src="docs/images/react/user-management.webp" alt="React user management" width="400"></td>
+</tr>
+</table>
+
+<table>
+<tr>
 <td align="center">
-<img src="docs/images/login.webp" alt="Login page" width="400">
+<img src="docs/images/appsmith/login.webp" alt="Login page" width="400">
 </td>
 
 <td align="center">
-<img src="docs/images/users.webp" alt="User management page" width="400">
+<img src="docs/images/appsmith/users.webp" alt="User management page" width="400">
 </td>
 </tr>
 
 <tr>
 <td align="center">
-<img src="docs/images/analysis-review1.webp" alt="Analysis review page" width="400">
+<img src="docs/images/appsmith/analysis-review1.webp" alt="Analysis review page" width="400">
 </td>
 
 <td align="center">
-<img src="docs/images/analyze.webp" alt="Analysis creation" width="400">
+<img src="docs/images/appsmith/analyze.webp" alt="Analysis creation" width="400">
 </td>
 </tr>
 
@@ -49,11 +64,13 @@
 
 # Contract Clause Reviewer
 
-Contract Clause Reviewer is a portfolio project for exploring how an AI-powered backend can be structured as a production-oriented service rather than as a single FastAPI application.
+Contract Clause Reviewer is a portfolio project exploring how an AI-powered backend can be structured as a production-oriented service rather than a single FastAPI application — and how a **hand-written API-driven React frontend** can replace low-code dashboards without requiring a single backend change.
 
-The application accepts contract text, sends the document to an LLM for structured analysis, stores the resulting clauses and risk information, and can generate a downloadable PDF report.
+The application accepts contract text, sends the document to an LLM for structured analysis, stores the resulting clauses and risk information, and can generate a downloadable PDF report. The React frontend is a first-class client of the same OpenAPI contract that powers the Appsmith dashboard.
 
 The project focuses primarily on the engineering behind the product:
+
+**Backend:**
 
 - Layered architecture with explicit separation of responsibilities
 - Dependency injection through FastAPI dependencies
@@ -68,7 +85,17 @@ The project focuses primarily on the engineering behind the product:
 - Dockerized API and worker deployment
 - Unit and integration test separation
 
-This is primarily an architecture and backend engineering portfolio project. It is not intended to replace professional legal review.
+**Frontend:**
+
+- React 19 + TypeScript + Vite with feature-oriented architecture
+- Centralized API client wrapping `fetch`, with reactive token refresh
+- TanStack Query for server state (queries, mutations, polling)
+- React Hook Form + Zod for form state and runtime validation
+- shadcn/ui + Tailwind CSS v4 with light/dark/system theming
+- Auth lifecycle with session restoration, protected routes, and role-based UI gating
+- Vitest + React Testing Library for infrastructure and behavioral tests
+
+This is primarily an architecture and engineering portfolio project. It is not intended to replace professional legal review.
 
 ---
 
@@ -88,9 +115,7 @@ The analysis service:
 - highlights key terms
 - provides suggested actions and recommendations
 
-LLM output is validated against a Pydantic schema before it is persisted.
-
-The current analyzer also applies a maximum document length and truncates long documents at a paragraph boundary where possible.
+LLM output is validated against a Pydantic schema before it is persisted. The analyzer also enforces a maximum document length and truncates long documents at a paragraph boundary where possible.
 
 ## Background Processing
 
@@ -108,6 +133,8 @@ Celery is configured with:
 - worker concurrency control
 - periodic cleanup tasks
 
+The frontend polls the status endpoints (`/analysis/status/{task_id}` and `/reports/status/{task_id}`) via TanStack Query's `refetchInterval`, which stops automatically on terminal states.
+
 ## Authentication and RBAC
 
 Authentication uses a local JWT workflow.
@@ -124,7 +151,7 @@ The authentication layer supports:
 - active-user checks
 - admin-only dependencies
 
-See [`docs/authentication.md`](docs/authentication.md) for the complete workflow.
+See [`docs/authentication.md`](docs/authentication.md) for the complete workflow, and [`docs/frontend.md`](docs/frontend.md) for how the React client consumes it.
 
 ## Rate Limiting
 
@@ -186,6 +213,40 @@ Analysis record updated with report metadata
 
 An example report is included at [`docs/example_report.pdf`](docs/example_report.pdf).
 
+## React Frontend
+
+The `frontend/` directory contains a full single-page application that consumes the same API as the Appsmith dashboard.
+
+Highlights:
+
+- **Feature-oriented architecture** — vertical slices under `src/features/` that mirror backend API tags (`auth`, `users`, `analysis`, `reports`).
+- **Centralized API client** — a single `fetch` wrapper handles base URL, JSON serialization, error normalization (FastAPI 422 array vs. string `detail`), and reactive token refresh with a single-flight refresh queue.
+- **Reactive authentication** — the app restores the session on mount, refreshes the access token on 401, and logs out on refresh failure. Tokens are held in `localStorage` with wrapper helpers.
+- **Polling as a first-class pattern** — TanStack Query's `refetchInterval` drives the analysis and report status pages. Polling stops on terminal states and caps at 3 consecutive failures.
+- **Consistent form stack** — React Hook Form + Zod + shadcn `Field` primitives across all forms, with shared error mapping via `handleFormError`.
+- **Route protection** — `RequireAuth`, `RequireRole`, and `GuestRoute` guards. UI gating is treated as UX, not security; the backend remains the security boundary.
+- **Design system** — shadcn/ui primitives, Tailwind v4 CSS variables, light/dark/system themes, responsive layout shell.
+
+See [`docs/frontend.md`](docs/frontend.md) for the architecture, and [`frontend/README.md`](frontend/README.md) for local development.
+
+## Appsmith Dashboard
+
+The `appsmith/` directory contains a JSON export of an Appsmith dashboard that demonstrates the same backend can serve multiple presentation layers:
+
+```text
+                    +-------------------+
+                    |   FastAPI API     |
+                    |     /api/v1       |
+                    +-------------------+
+                       /           \
+                      /             \
+                     v               v
+             React Frontend       Appsmith
+                                  Dashboard
+```
+
+The Appsmith dashboard was the original UI for this project. It is retained as a demonstration of API reuse and as a point of comparison with the React frontend. See [**Two Frontends: React vs. Appsmith**](#two-frontends-react-vs-appsmith) below for the tradeoffs observed.
+
 ---
 
 # Screenshots
@@ -208,11 +269,19 @@ An example report is included at [`docs/example_report.pdf`](docs/example_report
 
 # Architecture
 
-The application follows a layered architecture with infrastructure concerns kept separate from business-oriented services.
+The application follows a layered backend architecture with a feature-oriented React frontend. Infrastructure concerns are kept separate from business-oriented services on both sides.
 
 ```mermaid
 flowchart TB
-    Client[Client / Appsmith / API Consumer]
+    React[React Frontend]
+    Appsmith[Appsmith Dashboard]
+    APIConsumer[Other API Consumers]
+
+    subgraph FE["React Frontend (frontend/)"]
+        UI[Pages & Components]
+        FEFeatures[Feature Slices]
+        APIClient[API Client]
+    end
 
     subgraph API["API Layer"]
         Routes[FastAPI Routers]
@@ -241,7 +310,13 @@ flowchart TB
         Logging[Queue-based Logging]
     end
 
-    Client --> Routes
+    React --> UI
+    UI --> FEFeatures
+    FEFeatures --> APIClient
+    APIClient --> Routes
+    Appsmith --> Routes
+    APIConsumer --> Routes
+
     Routes --> Deps
     Routes --> Auth
     Routes --> Analysis
@@ -268,51 +343,33 @@ flowchart TB
     Celery --> Logging
 ```
 
-The main application boundaries are:
+The main application boundaries:
+
+**Backend:**
 
 ```text
-API
- ├── routing
- ├── request/response concerns
- ├── authentication dependencies
- └── rate-limit dependencies
-
-Services
- ├── business workflows
- ├── authentication logic
- ├── analysis orchestration
- ├── user operations
- └── report orchestration
-
-Repositories
- └── database access capabilities
-
-Models / Schemas
- ├── persistence models
- └── API / validation models
-
-Core
- ├── configuration
- ├── security primitives
- ├── Celery configuration
- ├── enums / exceptions
- └── reusable application utilities
-
-Infrastructure
- ├── Redis
- ├── OpenAI client integration
- ├── file storage
- └── logging
-
-Tasks
- ├── document analysis
- ├── report generation
- └── cleanup jobs
+API           → routing, request/response concerns, auth & rate-limit deps
+Services      → business workflows, orchestration
+Repositories  → database access capabilities
+Models/Schemas → persistence + validation models
+Core          → config, security, Celery, enums, exceptions
+Infrastructure → Redis, OpenAI, storage, logging
+Tasks         → analysis, reports, cleanup
 ```
 
-The architecture is intentionally layered rather than trying to implement a fully abstract Clean Architecture or hexagonal architecture. The goal is to get most of the practical benefits of separation and testability without excessive indirection.
+**Frontend:**
 
-More detail is available in [`docs/architecture.md`](docs/architecture.md).
+```text
+app/          → root composition (providers)
+pages/        → route-level components (thin composition)
+features/     → vertical slices (auth, users, analysis, reports)
+components/   → reusable UI (ui primitives, layout, common patterns)
+lib/          → technical infrastructure (API client, auth storage, tokens)
+hooks/        → generic reusable hooks
+types/        → pure TypeScript contracts mirroring backend Pydantic schemas
+```
+
+More detail is available in [`docs/architecture.md`](docs/architecture.md) and [`docs/frontend.md`](docs/frontend.md).
 
 ---
 
@@ -334,6 +391,36 @@ The backend is built with:
 </ul>
 
 The Python project requires Python 3.14+ and uses `uv` for dependency management.
+
+---
+
+# Frontend
+
+The frontend lives in `frontend/` and is built with:
+
+<ul>
+<li><b>React 19:</b> UI library</li>
+<li><b>TypeScript:</b> type safety for API contracts, forms, and props</li>
+<li><b>Vite 8:</b> dev server and production build tool</li>
+<li><b>React Router:</b> client-side routing with nested layouts and protected routes</li>
+<li><b>TanStack Query:</b> server state — queries, mutations, polling, cache invalidation</li>
+<li><b>React Hook Form + Zod:</b> form state and runtime schema validation</li>
+<li><b>shadcn/ui + Tailwind CSS v4:</b> design system, layout, and theming</li>
+<li><b>Lucide:</b> icon set</li>
+<li><b>Vitest + React Testing Library:</b> unit and integration tests</li>
+</ul>
+
+The frontend is a **pure API consumer** — it requires no backend changes, no server-side rendering, and no framework-specific integration. It talks to the FastAPI backend through the documented OpenAPI surface.
+
+Key architectural decisions:
+
+- **Server state vs. client state separation.** TanStack Query owns everything that comes from the backend. Local `useState` owns UI concerns (dialog open/closed, filter state). React Hook Form owns form field values. Auth state is held in React Context because it's a session-level concern, not per-query data.
+- **One API client, no exceptions.** Feature files never call `fetch` directly, except for the PDF download endpoint (binary response, no JSON parsing).
+- **Reactive token refresh.** A single-flight queue prevents concurrent 401s from triggering parallel refreshes that would invalidate rotated refresh tokens.
+- **Polling stops at terminal states.** The polling hooks return `false` from `refetchInterval` once a task reaches `completed` or `failed` — every poll after that is wasted network cost.
+- **URL is the identity.** Route components read params, validate them, and hand off to keyed stateful views. Changing `/analysis/1` → `/analysis/2` produces a fresh component instance, not a state reset.
+
+Full architecture: [`docs/frontend.md`](docs/frontend.md).
 
 ---
 
@@ -367,7 +454,7 @@ This means the API remains responsive while long-running analysis and report-gen
 
 Celery tasks are synchronous functions by design. The document analysis task bridges to the asynchronous LLM service inside the worker process, while database persistence and PDF generation are performed synchronously within the task.
 
-This is more accurate than describing the entire system as "fully async": the web layer is async-first, while background workers intentionally isolate blocking work.
+On the frontend side, this pattern is mirrored: the React client never blocks on long-running work. It fires a request, receives a `task_id`, and polls a status endpoint until a terminal state.
 
 ---
 
@@ -396,11 +483,11 @@ Alembic is used for schema migrations.
 
 ```mermaid
 sequenceDiagram
-    participant C as Client
+    participant C as Client (React / Appsmith)
     participant API as FastAPI
     participant DB as PostgreSQL
 
-    C->>API: POST /auth/login/oauth
+    C->>API: POST /auth/login
     API->>DB: Verify user
     API->>DB: Store hashed refresh token
     API-->>C: Access JWT + Refresh Token
@@ -416,9 +503,9 @@ sequenceDiagram
     API-->>C: New Access JWT + Refresh Token
 ```
 
-Access tokens are short-lived JWTs. Refresh tokens are opaque values whose hashes are stored server-side.
+Access tokens are short-lived JWTs. Refresh tokens are opaque values whose hashes are stored server-side. This avoids putting refresh-token secrets directly into the database and makes server-side revocation possible.
 
-This avoids putting refresh-token secrets directly into the database and makes server-side revocation possible.
+The React client implements this flow end-to-end: tokens are stored in `localStorage`, the API client attaches the access token to every request, and a 401 triggers a single-flight refresh that retries the original request with the new token. If the refresh fails, the client clears tokens and redirects to `/login`.
 
 ---
 
@@ -439,13 +526,47 @@ The project includes several security-oriented controls:
 - audit logging for sensitive actions
 - environment-based secrets and database configuration
 
+The frontend contributes:
+
+- reactive token refresh with a single-flight queue (prevents token invalidation from concurrent refreshes)
+- route guards as UX (backend remains the security boundary)
+- role-based UI gating (`RequireRole`)
+- clearing the query cache on logout so the next session cannot see the previous user's data
+
 This portfolio project should still be treated as a learning system rather than as a security-certified legal product. Production deployment would require additional controls such as secrets management, HTTPS termination, hardened cookie/CORS policy where applicable, security headers, monitoring and a formal threat model.
+
+---
+
+# Two Frontends: React vs. Appsmith
+
+Both frontends consume the same API. The comparison below reflects what was learned by building both.
+
+|                                   | Appsmith Dashboard                                         | React Frontend                                                                     |
+| --------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Initial setup**                 | Very fast — import JSON, configure datasource              | Higher — tooling, project structure, decisions                                     |
+| **Custom auth workflows**         | Requires coded workarounds; susceptible to race conditions | Explicit, controllable, testable                                                   |
+| **Responsive design**             | Weak — layouts resist adaptation                           | Native — Tailwind + shadcn handle breakpoints                                      |
+| **Reusability across projects**   | Low — dashboards stay bound to their app                   | High — auth, API client, form stack port between projects                          |
+| **Iteration speed once underway** | Slows as complexity grows                                  | Faster as patterns stabilize                                                       |
+| **AI-assisted development**       | Limited — AI cannot meaningfully edit Appsmith dashboards  | High — OpenAPI specs + typed React code give AI agents a rich surface to work with |
+| **Backend changes required**      | Occasionally (for auth flows)                              | **None** — the OpenAPI contract is sufficient                                      |
+
+**Observations:**
+
+- The React path has a **higher initial learning curve**, but combining it with FastAPI's OpenAPI spec makes subsequent development exceptionally smooth. The frontend can be designed without touching the backend.
+- **Custom authentication** (refresh rotation, single-flight refresh queues, role-based route guards) has no direct Appsmith solution. Any coded workaround is fragile and prone to race conditions — precisely the class of bug React + TanStack Query solves structurally.
+- **Responsive design** is a significant gap in Appsmith. The React frontend is naturally responsive because the layout shell owns the viewport, pages own their content grids, and shadcn primitives are layout-neutral.
+- **Modularity** matters over a career, not just a project. The React frontend's auth provider, API client, and form handling are portable to future projects with minimal changes. An Appsmith dashboard is not.
+- **AI-assisted iteration** is arguably the most important long-term consideration. Low-code tools advertise "rapid integration," but AI agents cannot meaningfully modify Appsmith dashboards. They can read OpenAPI specs, generate typed React code, and validate it against tests. The same trend that makes low-code attractive may make it obsolete for AI-driven workflows.
+- Compared to **SSR solutions** (Jinja + FastAPI, Django templates), the API-driven React frontend keeps frontend and backend concerns cleanly separated. No backend rendering work, no template coupling, no shared `urls.py` / `views.py` lifecycle. The OpenAPI contract is the only coupling — and AI agents can operate against that contract productively.
+
+The React frontend is the recommended default. Appsmith remains useful for quick internal dashboards over an existing API, particularly when no custom auth or responsive layout is required.
 
 ---
 
 # Deployment
 
-Docker is used to run the production-shaped application as separate services.
+Docker is used to run the production-shaped backend as separate services.
 
 The Compose setup contains:
 
@@ -477,48 +598,20 @@ The runtime image includes:
 
 Docker Compose also provides persistent volumes for PostgreSQL, Redis, reports and logs.
 
----
+## Frontend Production Build
 
-# Appsmith
-
-An Appsmith dashboard is provided in `appsmith/` directory.
-The dashboard is intended to demonstrate that the backend can serve more than one presentation layer:
-
-```text
-                    +-------------------+
-                    |   FastAPI API     |
-                    |     /api/v1       |
-                    +-------------------+
-                       /           \
-                      /             \
-                     v               v
-             Application UI      Appsmith
-                                  Dashboard
-```
-
-As a result the dashboard is deliberately treated as a client of the API rather than as part of the backend architecture.
-
-To use and test the dashboard you should:
-
-1. importing the Appsmith JSON export
-2. configuring the REST API datasource
-3. setting the API base URL
-
-## Connect Appsmith To API
-
-Make sure you have a running instance of app using [#How To Run] section. Then find the API base URL/IP needed for Appsmith datasource using:
+The frontend builds to static assets and is served by any HTTP server (Nginx, Caddy, a CDN). It does not require Node.js at runtime.
 
 ```bash
-$ docker inspect contract_clause_reviewer_api | grep IPAddress
+cd frontend
+pnpm install
+pnpm build
+# Output: frontend/dist/
 ```
 
-You will get something like:
+The `dist/` directory contains the compiled `index.html`, hashed JS/CSS bundles, and static assets. It can be served alongside the FastAPI backend from the same origin via a reverse proxy, or from a separate host with CORS configured on the backend.
 
-```text
-"IPAddress": "172.22.0.4"
-```
-
-Use this IP as the base URL for datasource.
+For development, the frontend uses Vite's dev server (`pnpm dev`) with a proxy that forwards `/api/*` to the backend, avoiding CORS entirely.
 
 ---
 
@@ -532,10 +625,11 @@ Make sure the following tools are installed:
 - uv
 - Docker
 - Docker Compose
+- **Node.js 20+ and pnpm** (for the frontend)
 
 An OpenAI-compatible API endpoint is also required for actual document analysis.
 
-## Development Setup
+## Backend Setup
 
 Clone the repository:
 
@@ -566,21 +660,26 @@ docker compose up -d --build
 
 This will run alembic migrations using the existing migration file in the repo.
 
-The API is exposed on:
+The API is exposed on `http://localhost:9000`. OpenAPI documentation is available at `http://localhost:9000/docs`.
 
-```text
-http://localhost:9000
+## Frontend Setup
+
+In a separate terminal:
+
+```bash
+cd frontend
+cp .env.example .env
+pnpm install
+pnpm dev
 ```
 
-OpenAPI documentation is available at:
+The frontend is exposed on `http://localhost:5173`. It proxies `/api/*` to `http://localhost:9000` via Vite's dev server, so no CORS configuration is required for local development.
 
-```text
-http://localhost:9000/docs
-```
+For the full frontend setup, environment variables, build commands, and testing, see [`frontend/README.md`](frontend/README.md).
 
 ## Generate Alembic Migrations And Applying Them
 
-To do this you should run database using `docker-compose.test.yaml` and then run alembic.
+To do this you should run the database using `docker-compose.test.yaml` and then run alembic.
 
 ```text
 docker compose -f docker-compose.test.yaml --env-file .env.test up -d
@@ -627,7 +726,7 @@ ENV_FILE=.env.test uv run granian \
 
 # Testing
 
-The test suite is separated into unit and integration tests:
+The backend test suite is separated into unit and integration tests:
 
 ```text
 tests/
@@ -646,25 +745,26 @@ The test environment is designed to minimize external dependencies:
 - `fakeredis` is used for Redis-dependent tests
 - pytest-asyncio handles async test execution
 
-Run the full suite:
+Run the full backend suite:
 
 ```bash
 ENV_FILE=.env.test uv run pytest
 ```
 
-Run a specific test module:
+See [`docs/testing.md`](docs/testing.md) for the backend testing strategy.
+
+## Frontend Tests
+
+The frontend uses Vitest + React Testing Library:
 
 ```bash
-ENV_FILE=.env.test uv run pytest tests/integration/api/test_auth.py -v
+cd frontend
+pnpm test           # watch mode
+pnpm test:run       # one-off run (CI)
+pnpm coverage       # coverage report
 ```
 
-Run tests matching a name:
-
-```bash
-ENV_FILE=.env.test uv run pytest -k "login"
-```
-
-See [`docs/testing.md`](docs/testing.md) for the testing strategy and fixture design.
+Tests co-locate with source (`features/users/schemas.test.ts` next to `schemas.ts`), with shared fixtures in `frontend/src/tests/`. Coverage focuses on infrastructure (API client, auth interceptor, tokens, handleFormError), route guards, form validation, and critical mutation wiring. See [`docs/frontend.md#testing`](docs/frontend.md#testing).
 
 ---
 
@@ -672,80 +772,45 @@ See [`docs/testing.md`](docs/testing.md) for the testing strategy and fixture de
 
 ```text
 contract-clause-reviewer/
-├── alembic/
-│   └── versions/
-├── app/
+├── app/                    # FastAPI backend
 │   ├── api/
-│   │   ├── analysis.py
-│   │   ├── auth.py
-│   │   ├── deps.py
-│   │   ├── reports.py
-│   │   └── users.py
 │   ├── core/
-│   │   ├── filters/
-│   │   ├── celery.py
-│   │   ├── config.py
-│   │   ├── enums.py
-│   │   ├── exceptions.py
-│   │   ├── security.py
-│   │   └── utilities.py
 │   ├── db/
-│   │   ├── database.py
-│   │   └── seed.py
 │   ├── infrastructure/
-│   │   ├── openai/
-│   │   ├── redis/
-│   │   ├── logging.py
-│   │   └── storage.py
 │   ├── middleware/
-│   │   ├── rate_limit.py
-│   │   └── request_logging.py
 │   ├── models/
-│   │   └── models.py
 │   ├── repositories/
-│   │   ├── analysis_repositories.py
-│   │   ├── refresh_token_repositories.py
-│   │   └── user_repositories.py
 │   ├── schemas/
-│   │   ├── analysis.py
-│   │   ├── base.py
-│   │   ├── report.py
-│   │   └── users.py
 │   ├── services/
-│   │   ├── analysis.py
-│   │   ├── auth.py
-│   │   ├── document_analyzer.py
-│   │   ├── report_generator.py
-│   │   ├── reports.py
-│   │   ├── services.py
-│   │   └── users.py
-│   ├── tasks/
-│   │   ├── cleanup_tasks.py
-│   │   ├── document_tasks.py
-│   │   └── report_tasks.py
-│   └── main.py
-├── docs/
-│   ├── images/
-│   │   ├── report.webp
-│   │   └── table-structure.svg
-│   ├── example_llm_schema.json
-│   └── example_report.pdf
-├── tests/
-│   ├── integration/
-│   │   ├── api/
-│   │   └── middleware/
-│   ├── unit/
-│   │   ├── core/
-│   │   └── services/
-│   └── conftest.py
-├── .env.example
-├── .env.test.example
+│   └── tasks/
+├── alembic/                # DB migrations
+├── tests/                  # Backend tests (unit + integration)
+├── frontend/               # React + TypeScript frontend
+│   ├── src/
+│   │   ├── app/            # Providers
+│   │   ├── components/     # ui/, layout/, common/
+│   │   ├── features/       # auth/, users/, analysis/, reports/
+│   │   ├── hooks/          # generic hooks
+│   │   ├── lib/            # api/, auth/, forms/, utils
+│   │   ├── pages/          # route-level components
+│   │   ├── styles/
+│   │   ├── tests/          # shared test utilities
+│   │   ├── types/          # shared API contracts
+│   │   ├── router.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── vitest.config.ts
+│   └── README.md
+├── appsmith/               # Appsmith dashboard export
+├── docs/                   # Cross-cutting documentation
+├── logs/                   # (git-ignored)
+├── reports/                # (git-ignored)
 ├── Dockerfile
 ├── docker-compose.yaml
 ├── docker-compose.test.yaml
-├── alembic.ini
 ├── pyproject.toml
-└── uv.lock
+└── README.md
 ```
 
 ---
@@ -754,13 +819,18 @@ contract-clause-reviewer/
 
 More detailed engineering notes are kept under `docs/`:
 
-- [`architecture.md`](docs/architecture.md) — layer responsibilities, dependency direction and design decisions
+- [`architecture.md`](docs/architecture.md) — backend layer responsibilities, dependency direction and design decisions
 - [`authentication.md`](docs/authentication.md) — JWT, refresh-token rotation and RBAC workflow
 - [`background-processing.md`](docs/background-processing.md) — Celery queues, retries and worker design
-- [`testing.md`](docs/testing.md) — unit/integration strategy and test infrastructure
-- [`appsmith.md`](docs/appsmith.md) — planned Appsmith dashboard integration
+- [`frontend.md`](docs/frontend.md) — React frontend architecture, state ownership, API integration and testing
+- [`testing.md`](docs/testing.md) — backend unit/integration strategy and test infrastructure
+- [`appsmith.md`](docs/appsmith.md) — Appsmith dashboard integration
 - [`example_report.pdf`](docs/example_report.pdf) — sample generated report
 - [`example_llm_schema.json`](docs/example_llm_schema.json) — example structured LLM output schema
+
+The frontend has its own README for local development:
+
+- [`frontend/README.md`](frontend/README.md) — setup, environment variables, commands, and conventions
 
 ---
 
@@ -770,38 +840,42 @@ The project was built around a few practical engineering goals:
 
 ### 1. Keep request handlers thin
 
-FastAPI routes should primarily translate HTTP concerns into calls to application services.
+FastAPI routes should primarily translate HTTP concerns into calls to application services. React route components should primarily compose feature components inside a layout — no fetching, no business logic.
 
 ### 2. Keep business workflows out of repositories
 
-Repositories expose data-access capabilities. Services compose those capabilities into application operations.
+Repositories expose data-access capabilities. Services compose those capabilities into application operations. On the frontend, feature modules compose API calls and state, while pages compose feature components.
 
 ### 3. Offload long-running work
 
-LLM analysis and PDF generation should not block HTTP requests.
+LLM analysis and PDF generation should not block HTTP requests. The frontend reflects this by polling status endpoints rather than awaiting long-running calls.
 
 ### 4. Make infrastructure replaceable
 
-Redis, the LLM provider, file storage and logging live behind infrastructure-oriented modules rather than being scattered across route handlers.
+Redis, the LLM provider, file storage and logging live behind infrastructure-oriented modules rather than being scattered across route handlers. On the frontend, the API client is a single boundary that can be swapped without touching feature code.
 
 ### 5. Make security explicit
 
-Authentication, authorization, refresh-token persistence and rate limiting are treated as first-class application concerns.
+Authentication, authorization, refresh-token persistence and rate limiting are treated as first-class application concerns. On the frontend, the same discipline applies: token refresh is centralized, route guards are the UX layer, and the backend remains the security boundary.
 
 ### 6. Keep tests independent from external services where possible
 
-The test suite uses test substitutes for PostgreSQL and Redis so most tests can run without starting the full production stack.
+The backend test suite uses test substitutes for PostgreSQL and Redis. The frontend test suite mocks the API boundary (not `fetch`), so feature tests exercise real TanStack Query, React Hook Form, and Zod behavior without network calls.
+
+### 7. Prefer framework boundaries over clever abstractions
+
+The frontend does not use Redux, Zustand, or a custom state library. Server state belongs to TanStack Query, form state to React Hook Form, session state to React Context. Each concern has exactly one owner, and the boundaries between them are the framework's boundaries.
 
 ---
 
 # Limitations and Future Improvements
 
-This repository intentionally focuses on backend architecture rather than on building a complete commercial legal product.
+This repository focuses on backend architecture and a portfolio-quality frontend. It is not a complete commercial legal product.
 
-Some areas that could be expanded in a production system include:
+Backend improvements that could be explored:
 
 - document upload and extraction from PDF/DOCX files
-- streaming or progress events for long-running analyses
+- streaming or progress events for long-running analyses (SSE)
 - more advanced LLM evaluation and regression testing
 - prompt/version management
 - model/provider failover
@@ -811,7 +885,22 @@ Some areas that could be expanded in a production system include:
 - more granular authorization policies
 - stronger production security hardening
 - CI/CD workflows and automated release management
-- the Appsmith dashboard and its integration documentation
+
+Frontend improvements that could be explored:
+
+- end-to-end tests with Playwright for critical flows
+- SSR or hybrid rendering via a Next.js port (deferred; the current app is designed as a pure SPA)
+- URL-based state for list filters (currently in local state) for shareability
+- optimistic updates for mutations (currently refetch after success)
+- keyboard shortcuts and command palette for power users
+- internationalization
+- accessibility audit against WCAG 2.1 AA
+
+Infrastructure improvements:
+
+- a unified Docker Compose that builds and serves both frontend and backend behind a reverse proxy
+- a production deployment recipe with TLS termination
+- CI workflows that run both backend and frontend test suites
 
 ---
 
