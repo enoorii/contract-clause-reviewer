@@ -9,7 +9,11 @@ export const analysisCreateSchema = z.object({
 
   text: z.string().min(10, "Contract text must be at least 10 characters"), // UI-specific minimum
 
-  description: z.string().nullable().optional().transform((v) => (v === "" ? undefined : v)),
+  description: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
 });
 
 // Infer the TS type from the schema (used by the form component)
