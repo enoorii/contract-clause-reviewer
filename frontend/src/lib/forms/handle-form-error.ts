@@ -1,19 +1,37 @@
 import type { UseFormReturn, FieldValues, Path } from "react-hook-form";
 import { HttpError, NetworkError } from "@/lib/api/types";
 
-interface HandleFormErrorOptions<T extends FieldValues> {
-  form: UseFormReturn<T>;
+/**
+ * `handleFormError` accepts forms where input and output types differ —
+ * which happens when the Zod schema uses `.transform()`. React Hook Form v7
+ * types forms with three generics: `TFieldValues` (input), `TContext`, and
+ * `TTransformedValues` (output). The default `TOutput = TInput` means forms
+ * without transforms still typecheck unchanged.
+ */
+interface HandleFormErrorOptions<
+  TInput extends FieldValues,
+  TOutput extends FieldValues = TInput,
+> {
+  form: UseFormReturn<TInput, unknown, TOutput>;
   /** Map backend field names → form field names (e.g., "old_password" → "oldPassword") */
-  fieldMap?: Record<string, Path<T>>;
+  fieldMap?: Record<string, Path<TInput>>;
   /** Called for errors that don't map to a field */
   setFormError: (message: string) => void;
   /** Fallback when the error is untyped */
   fallback: string;
 }
 
-export function handleFormError<T extends FieldValues>(
+export function handleFormError<
+  TInput extends FieldValues,
+  TOutput extends FieldValues = TInput,
+>(
   err: unknown,
-  { form, fieldMap = {}, setFormError, fallback }: HandleFormErrorOptions<T>,
+  {
+    form,
+    fieldMap = {},
+    setFormError,
+    fallback,
+  }: HandleFormErrorOptions<TInput, TOutput>,
 ): void {
   if (!(err instanceof HttpError)) {
     setFormError(
@@ -31,7 +49,10 @@ export function handleFormError<T extends FieldValues>(
       const raw = String(e.loc[e.loc.length - 1]);
       const formField = fieldMap[raw] ?? raw;
       if (formField in form.getValues()) {
-        form.setError(formField as Path<T>, { type: "server", message: e.msg });
+        form.setError(formField as Path<TInput>, {
+          type: "server",
+          message: e.msg,
+        });
       } else {
         setFormError(e.msg);
       }

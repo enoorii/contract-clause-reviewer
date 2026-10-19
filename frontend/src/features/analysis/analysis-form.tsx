@@ -3,9 +3,10 @@ import { useMutation } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router";
+import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
-import { analysisCreateSchema, type AnalysisCreateInput } from "./schemas";
+import { analysisCreateSchema } from "./schemas";
 import { submitAnalysis } from "./api";
 import { handleFormError } from "@/lib/forms/handle-form-error";
 
@@ -21,11 +22,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+// The schema uses `.transform()` on `description`, so `z.input` and `z.output`
+// differ: input allows `description` to be absent, output normalizes it to
+// `string | undefined`. React Hook Form v7 needs both types in its three-generic
+// form: `useForm<TFieldValues, TContext, TTransformedValues>`.
+type AnalysisFormInput = z.input<typeof analysisCreateSchema>;
+type AnalysisFormOutput = z.output<typeof analysisCreateSchema>;
+
 export function AnalysisForm() {
   const navigate = useNavigate();
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  const form = useForm<AnalysisCreateInput>({
+  const form = useForm<AnalysisFormInput, unknown, AnalysisFormOutput>({
     mode: "onTouched",
     resolver: zodResolver(analysisCreateSchema),
     defaultValues: { title: "", text: "", description: "" },
@@ -46,7 +54,7 @@ export function AnalysisForm() {
     },
   });
 
-  function onSubmit(data: AnalysisCreateInput) {
+  function onSubmit(data: AnalysisFormOutput) {
     setGlobalError(null);
     mutation.mutate(data);
   }
