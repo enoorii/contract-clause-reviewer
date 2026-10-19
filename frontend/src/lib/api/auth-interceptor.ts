@@ -48,7 +48,6 @@ export async function handleAuthError(
 
     if (!newToken) {
       // Refresh failed - logout
-      authHandler.logout();
       throw error;
     }
 
