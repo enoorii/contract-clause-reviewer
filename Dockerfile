@@ -16,13 +16,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     gosu \
-    # WeasyPrint dependencies
+    # WeasyPrint core dependencies (no image support needed)
     libgobject-2.0-0 \
     libpango-1.0-0 \
+    libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
     libcairo2 \
     libharfbuzz0b \
-    libffi-dev \
+    libharfbuzz-subset0 \
     && \
     rm -rf /var/lib/apt/lists/*
 
