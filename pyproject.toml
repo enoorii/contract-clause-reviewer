@@ -24,18 +24,24 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "distro>=1.9.0",
     "fakeredis>=2.40.0",
     "freezegun>=1.5.5",
+    "greenlet>=3.5.6",
+    "httpx>=0.28.1",
     "httpx2>=2.16.0",
     "ipykernel>=7.4.0",
     "ipython>=9.18.1",
     "py-pglite[sqlalchemy]>=0.5.3",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1.post1",
+    "tqdm>=4.70.1",
+    "tzdata>=2026.6",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 
 [tool.basedpyright]
 typeCheckingMode = "basic"
